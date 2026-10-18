@@ -70,3 +70,20 @@ function render(){
  $('resultControls').innerHTML=events.map(e=>{const selected=assignments.filter(a=>a.event_id===e.id).map(a=>families.find(f=>f.id===a.family_id)).filter(Boolean),r=results.find(r=>r.event_id===e.id);const opts=key=>'<option value="">اختر العائلة</option>'+selected.map(f=>`<option value="${f.id}" ${r?.[key]===f.id?'selected':''}>${esc(f.family)}</option>`).join('');return `<div class="panel" style="margin:12px 0"><b>${esc(e.name)} — ${esc(e.event_date)}</b><p class="muted">${selected.length}/8 عوائل</p><label>الفائز بالنهائي<select id="first_${e.id}">${opts('first_family_id')}</select></label><label>الخاسر أمام الفائز في النهائي<select id="second_${e.id}">${opts('second_family_id')}</select></label><button onclick="saveResult('${e.id}')">اعتماد النتيجة</button></div>`}).join('');
 }
 fetchAll();
+
+let roomMatches = [];
+
+async function loadRoomMatches() {
+  if (!db) return;
+
+  const { data, error } = await db
+    .from('room_matches')
+    .select('*');
+
+  if (error) {
+    notify('تعذر تحميل المواجهات: ' + error.message);
+    return;
+  }
+
+  roomMatches = data || [];
+}
