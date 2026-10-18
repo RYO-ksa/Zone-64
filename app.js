@@ -163,3 +163,78 @@ async function createRoomBracket(eventId) {
   await loadRoomMatches();
   notify('تم إنشاء مواجهات دور 8 عشوائيًا بنجاح');
 }
+
+async function displayPublicMatches() {
+  const container = document.getElementById('publicMatches');
+  if (!container || !db) return;
+
+  const { data: matches, error } = await db
+    .from('room_matches')
+    .select('*')
+    .order('round_number', { ascending: true })
+    .order('match_number', { ascending: true });
+
+  if (error) {
+    container.textContent = 'تعذر تحميل المواجهات: ' + error.message;
+    return;
+  }
+
+  const { data: names, error: namesError } = await db
+    .from('public_family_names')
+    .select('*');
+
+  if (namesError) {
+    container.textContent = 'تعذر تحميل أسماء العوائل';
+    return;
+  }
+
+  const familyNames = new Map(
+    (names || []).map(f => [f.id, f.name])
+  );
+
+  if (!matches || matches.length === 0) {
+    container.textContent = 'لم يتم إجراء القرعة بعد';
+    return;
+  }
+
+  const roundNames = {
+    1: 'دور 8',
+    2: 'نصف النهائي',
+    3: 'النهائي'
+  };
+
+  container.innerHTML = '';
+
+  for (const round of [1, 2, 3]) {
+    const roundMatches = matches.filter(
+      m => m.round_number === round
+    );
+
+    if (!roundMatches.length) continue;
+
+    const section = document.createElement('div');
+    const heading = document.createElement('h3');
+    heading.textContent = roundNames[round];
+    section.appendChild(heading);
+
+    for (const match of roundMatches) {
+      const card = document.createElement('div');
+      card.className = 'panel';
+      const first = familyNames.get(match.first_family_id) || 'بانتظار المتأهل';
+      const second = familyNames.get(match.second_family_id) || 'بانتظار المتأهل';
+
+      const title = document.createElement('strong');
+      title.textContent = 'المواجهة ' + match.match_number;
+
+      const teams = document.createElement('p');
+      teams.textContent = first + ' × ' + second;
+
+      card.append(title, teams);
+      section.appendChild(card);
+    }
+
+    container.appendChild(section);
+  }
+}
+
+displayPublicMatches();
