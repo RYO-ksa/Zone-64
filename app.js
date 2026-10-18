@@ -198,74 +198,159 @@ async function displayPublicMatches() {
   }
 
   
-const  roundNames = {
-  1: 'دور 8',
+
+const roundNames = {
+  1: 'دور الثمانية',
   2: 'نصف النهائي',
   3: 'النهائي'
 };
 
 container.innerHTML = '';
 
-const bracket = document.createElement('div');
-bracket.style.cssText = 'display:flex;direction:rtl;gap:42px;align-items:stretch;min-width:760px;padding:16px;';
+const groups = new Map();
 
-for (const round of [1, 2, 3]) {
-  const roundMatches = matches
-    .filter(m => m.round_number === round)
-    .sort((a, b) => a.match_number - b.match_number);
+for (const match of matches) {
+  const key = match.event_id ?? 'default';
+  if (!groups.has(key)) groups.set(key, []);
+  groups.get(key).push(match);
+}
 
-  const column = document.createElement('div');
-  column.style.cssText = 'flex:1;display:flex;flex-direction:column;min-width:190px;';
+let roomNumber = 0;
 
-  const heading = document.createElement('h3');
-  heading.textContent = roundNames[round];
-  heading.style.cssText = 'text-align:center;color:#ff6572;margin:0 0 18px;';
-  column.appendChild(heading);
+for (const roomMatches of groups.values()) {
+  roomNumber++;
 
-  const matchArea = document.createElement('div');
-  matchArea.style.cssText = 'flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:22px;';
+  const roomTitle = document.createElement('h3');
+  roomTitle.textContent = 'جدول الروم ' + roomNumber;
+  roomTitle.style.cssText =
+    'text-align:center;color:#e3a8b2;margin:20px 0;';
+  container.appendChild(roomTitle);
 
-  for (const match of roundMatches) {
-    const first = familyNames.get(match.first_family_id) || 'بانتظار المتأهل';
-    const second = familyNames.get(match.second_family_id) || 'بانتظار المتأهل';
+  const scroll = document.createElement('div');
+  scroll.style.cssText =
+    'width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:25px;';
 
-    const card = document.createElement('div');
-    card.style.cssText = 'position:relative;background:#24151d;border:1px solid #75404c;border-radius:12px;padding:12px;text-align:center;min-height:105px;display:flex;flex-direction:column;justify-content:center;gap:9px;';
+  const stage = document.createElement('div');
+  stage.style.cssText =
+    'position:relative;width:850px;height:550px;direction:ltr;margin:auto;';
 
-    const number = document.createElement('small');
-    number.textContent = 'المواجهة ' + match.match_number;
-    number.style.color = '#e3a8b2';
+  const positions = [
+    [100, 220, 340, 460],
+    [160, 400],
+    [280]
+  ];
 
-    const team1 = document.createElement('div');
-    team1.textContent = first;
+  const x = [10, 310, 610];
+  const cardWidth = 230;
+  const cardHeight = 94;
 
-    const divider = document.createElement('div');
-    divider.textContent = 'VS';
-    divider.style.cssText = 'color:#ff6572;font-weight:bold;font-size:12px;';
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
 
-    const team2 = document.createElement('div');
-    team2.textContent = second;
+  svg.setAttribute('width', '850');
+  svg.setAttribute('height', '550');
+  svg.setAttribute('viewBox', '0 0 850 550');
 
-    card.append(number, team1, divider, team2);
+  svg.style.cssText =
+    'position:absolute;inset:0;pointer-events:none;';
 
-    if (round !== 3) {
-      const line = document.createElement('span');
-      line.style.cssText = 'position:absolute;left:-43px;top:50%;width:43px;border-top:2px solid #a84c60;';
-      card.appendChild(line);
-    }
+  function line(x1, y1, x2, y2) {
+    const element = document.createElementNS(svgNS, 'line');
 
-    matchArea.appendChild(card);
+    element.setAttribute('x1', x1);
+    element.setAttribute('y1', y1);
+    element.setAttribute('x2', x2);
+    element.setAttribute('y2', y2);
+    element.setAttribute('stroke', '#b8758a');
+    element.setAttribute('stroke-width', '2');
+
+    svg.appendChild(element);
   }
 
-  column.appendChild(matchArea);
-  bracket.appendChild(column);
+  for (let r = 0; r < 2; r++) {
+    const startX = x[r] + cardWidth;
+    const endX = x[r + 1];
+    const middleX = (startX + endX) / 2;
+
+    for (let i = 0; i < positions[r + 1].length; i++) {
+      const y1 = positions[r][i * 2];
+      const y2 = positions[r][i * 2 + 1];
+      const targetY = positions[r + 1][i];
+
+      line(startX, y1, middleX, y1);
+      line(startX, y2, middleX, y2);
+      line(middleX, y1, middleX, y2);
+      line(middleX, targetY, endX, targetY);
+    }
+  }
+
+  stage.appendChild(svg);
+
+  for (let r = 0; r < 3; r++) {
+    const round = r + 1;
+
+    const heading = document.createElement('div');
+    heading.textContent = roundNames[round];
+
+    heading.style.cssText =
+      `position:absolute;left:${x[r]}px;top:15px;width:${cardWidth}px;text-align:center;font-size:18px;font-weight:bold;color:#e3a8b2;`;
+
+    stage.appendChild(heading);
+
+    const roundMatches = roomMatches
+      .filter(m => Number(m.round_number) === round)
+      .sort((a, b) =>
+        Number(a.match_number) - Number(b.match_number)
+      );
+
+    for (let i = 0; i < positions[r].length; i++) {
+      const match =
+        roundMatches.find(
+          m => Number(m.match_number) === i + 1
+        ) || roundMatches[i];
+
+      const first = match?.first_family_id
+        ? familyNames.get(match.first_family_id) || 'عائلة غير معروفة'
+        : round === 1 ? 'بانتظار القرعة' : 'بانتظار المتأهل';
+
+      const second = match?.second_family_id
+        ? familyNames.get(match.second_family_id) || 'عائلة غير معروفة'
+        : round === 1 ? 'بانتظار القرعة' : 'بانتظار المتأهل';
+
+      const card = document.createElement('div');
+
+      card.style.cssText =
+        `position:absolute;left:${x[r]}px;top:${positions[r][i] - cardHeight / 2}px;width:${cardWidth}px;height:${cardHeight}px;box-sizing:border-box;background:#25151c;border:1px solid #a85b70;border-radius:12px;color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;padding:8px;direction:rtl;text-align:center;overflow-wrap:anywhere;`;
+
+      const label = document.createElement('div');
+      label.textContent = 'المواجهة ' + (i + 1);
+      label.style.cssText =
+        'font-size:11px;color:#e3a8b2;';
+
+      const team1 = document.createElement('div');
+      team1.textContent = first;
+      team1.style.cssText =
+        'font-size:13px;font-weight:bold;';
+
+      const versus = document.createElement('div');
+      versus.textContent = 'VS';
+      versus.style.cssText =
+        'font-size:11px;color:#ff6572;';
+
+      const team2 = document.createElement('div');
+      team2.textContent = second;
+      team2.style.cssText =
+        'font-size:13px;font-weight:bold;';
+
+      card.append(label, team1, versus, team2);
+      stage.appendChild(card);
+    }
+  }
+
+  scroll.appendChild(stage);
+  container.appendChild(scroll);
+}
 }
 
-const scroll = document.createElement('div');
-scroll.style.cssText = 'overflow-x:auto;width:100%;';
-scroll.appendChild(bracket);
-container.appendChild(scroll);
-
-}
 
 displayPublicMatches();
