@@ -197,44 +197,75 @@ async function displayPublicMatches() {
     return;
   }
 
-  const roundNames = {
-    1: 'دور 8',
-    2: 'نصف النهائي',
-    3: 'النهائي'
-  };
+  
+const roundNames = {
+  1: 'دور 8',
+  2: 'نصف النهائي',
+  3: 'النهائي'
+};
 
-  container.innerHTML = '';
+container.innerHTML = '';
 
-  for (const round of [1, 2, 3]) {
-    const roundMatches = matches.filter(
-      m => m.round_number === round
-    );
+const bracket = document.createElement('div');
+bracket.style.cssText = 'display:flex;direction:rtl;gap:42px;align-items:stretch;min-width:760px;padding:16px;';
 
-    if (!roundMatches.length) continue;
+for (const round of [1, 2, 3]) {
+  const roundMatches = matches
+    .filter(m => m.round_number === round)
+    .sort((a, b) => a.match_number - b.match_number);
 
-    const section = document.createElement('div');
-    const heading = document.createElement('h3');
-    heading.textContent = roundNames[round];
-    section.appendChild(heading);
+  const column = document.createElement('div');
+  column.style.cssText = 'flex:1;display:flex;flex-direction:column;min-width:190px;';
 
-    for (const match of roundMatches) {
-      const card = document.createElement('div');
-      card.className = 'panel';
-      const first = familyNames.get(match.first_family_id) || 'بانتظار المتأهل';
-      const second = familyNames.get(match.second_family_id) || 'بانتظار المتأهل';
+  const heading = document.createElement('h3');
+  heading.textContent = roundNames[round];
+  heading.style.cssText = 'text-align:center;color:#ff6572;margin:0 0 18px;';
+  column.appendChild(heading);
 
-      const title = document.createElement('strong');
-      title.textContent = 'المواجهة ' + match.match_number;
+  const matchArea = document.createElement('div');
+  matchArea.style.cssText = 'flex:1;display:flex;flex-direction:column;justify-content:space-around;gap:22px;';
 
-      const teams = document.createElement('p');
-      teams.textContent = first + ' × ' + second;
+  for (const match of roundMatches) {
+    const first = familyNames.get(match.first_family_id) || 'بانتظار المتأهل';
+    const second = familyNames.get(match.second_family_id) || 'بانتظار المتأهل';
 
-      card.append(title, teams);
-      section.appendChild(card);
+    const card = document.createElement('div');
+    card.style.cssText = 'position:relative;background:#24151d;border:1px solid #75404c;border-radius:12px;padding:12px;text-align:center;min-height:105px;display:flex;flex-direction:column;justify-content:center;gap:9px;';
+
+    const number = document.createElement('small');
+    number.textContent = 'المواجهة ' + match.match_number;
+    number.style.color = '#e3a8b2';
+
+    const team1 = document.createElement('div');
+    team1.textContent = first;
+
+    const divider = document.createElement('div');
+    divider.textContent = 'VS';
+    divider.style.cssText = 'color:#ff6572;font-weight:bold;font-size:12px;';
+
+    const team2 = document.createElement('div');
+    team2.textContent = second;
+
+    card.append(number, team1, divider, team2);
+
+    if (round !== 3) {
+      const line = document.createElement('span');
+      line.style.cssText = 'position:absolute;left:-43px;top:50%;width:43px;border-top:2px solid #a84c60;';
+      card.appendChild(line);
     }
 
-    container.appendChild(section);
+    matchArea.appendChild(card);
   }
+
+  column.appendChild(matchArea);
+  bracket.appendChild(column);
+}
+
+const scroll = document.createElement('div');
+scroll.style.cssText = 'overflow-x:auto;width:100%;';
+scroll.appendChild(bracket);
+container.appendChild(scroll);
+
 }
 
 displayPublicMatches();
