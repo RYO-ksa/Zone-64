@@ -198,7 +198,7 @@ async function displayPublicMatches() {
   }
 
   
-const roundNames = {
+const  roundNames = {
   1: 'دور 8',
   2: 'نصف النهائي',
   3: 'النهائي'
