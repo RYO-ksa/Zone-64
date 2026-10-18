@@ -87,3 +87,79 @@ async function loadRoomMatches() {
 
   roomMatches = data || [];
 }
+
+async function createRoomBracket(eventId) {
+  if (!admin) return notify('هذا الإجراء للمشرف فقط');
+
+  const ev = events.find(e => e.id === eventId);
+  if (!ev || ev.published) {
+    return notify('يجب أن يكون الروم مخفيًا');
+  }
+
+  const selected = assignments
+    .filter(a => a.event_id === eventId)
+    .map(a => a.family_id);
+
+  if (selected.length !== 8 || new Set(selected).size !== 8) {
+    return notify('يجب وجود 8 عوائل مختلفة في الروم');
+  }
+
+  const { data: existing, error: readError } = await db
+    .from('room_matches')
+    .select('id')
+    .eq('event_id', eventId);
+
+  if (readError) return notify(readError.message);
+
+  if (existing.length) {
+    return notify('تم إنشاء جدول هذا الروم مسبقًا');
+  }
+
+  // ترتيب العوائل عشوائيًا
+  const shuffled = [...selected];
+
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const random = new Uint32Array(1);
+    crypto.getRandomValues(random);
+    const j = random[0] % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  const matches = [];
+
+  // دور 8: أربع مواجهات
+  for (let i = 0; i < 4; i++) {
+    matches.push({
+      event_id: eventId,
+      round_number: 1,
+      match_number: i + 1,
+      first_family_id: shuffled[i * 2],
+      second_family_id: shuffled[i * 2 + 1]
+    });
+  }
+
+  // نصف النهائي: مواجهتان
+  for (let i = 1; i <= 2; i++) {
+    matches.push({
+      event_id: eventId,
+      round_number: 2,
+      match_number: i
+    });
+  }
+
+  // النهائي: مواجهة واحدة
+  matches.push({
+    event_id: eventId,
+    round_number: 3,
+    match_number: 1
+  });
+
+  const { error } = await db
+    .from('room_matches')
+    .insert(matches);
+
+  if (error) return notify('تعذر إنشاء الجدول: ' + error.message);
+
+  await loadRoomMatches();
+  notify('تم إنشاء مواجهات دور 8 عشوائيًا بنجاح');
+}
