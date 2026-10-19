@@ -318,6 +318,8 @@ async function assign(familyId, eventId) {
   await fetchAll();
 }
 
+/* القرعة العشوائية */
+
 async function randomDraw(eventId) {
   if (!admin) return;
 
@@ -349,6 +351,8 @@ async function randomDraw(eventId) {
   await fetchAll();
   notify('نجحت القرعة واختيرت ' + data + ' عوائل');
 }
+
+/* إزالة عائلة من روم قبل إنشاء المواجهات */
 
 async function unassign(familyId, eventId) {
   if (!admin) return;
@@ -589,7 +593,7 @@ async function editFamily(id) {
   await fetchAll();
 }
 
-/* حذف عائلة من التسجيل - الصلاحية الجديدة */
+/* حذف عائلة من التسجيل */
 
 async function deleteFamily(id) {
   if (!admin) return notify('ليس لديك صلاحية الإدارة');
@@ -602,8 +606,7 @@ async function deleteFamily(id) {
     '" من التسجيل نهائيًا؟'
   )) return;
 
-  const { error } = await db.rpc('zone_admin_manage', {
-    p_action: 'delete_family',
+  const { error } = await db.rpc('zone_admin_delete_family', {
     p_family_id: id
   });
 
@@ -615,7 +618,7 @@ async function deleteFamily(id) {
   notify('تم حذف العائلة من التسجيل بنجاح');
 }
 
-/* تعديل الروم */
+/* تعديل بيانات الروم */
 
 async function editRoom(id) {
   if (!admin) return;
@@ -646,33 +649,45 @@ async function editRoom(id) {
   await fetchAll();
 }
 
-/* حذف روم فارغ */
+/* حذف الروم مع مواجهاته وتوزيعه */
 
 async function deleteRoom(id) {
-  if (!admin) return;
+  if (!admin) return notify('ليس لديك صلاحية الإدارة');
 
-  if (
-    eventMatches(id).length ||
-    eventAssignments(id).length ||
-    results.some(r => r.event_id === id)
-  ) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return notify('الروم غير موجود');
+
+  if (results.some(r => r.event_id === id)) {
     return notify(
-      'الروم يحتوي على عوائل أو مواجهات أو نتائج. لا يمكن حذفه قبل معالجة البيانات المرتبطة.'
+      'لا يمكن حذف روم لديه مقاعد تأهل معتمدة'
     );
   }
 
-  if (!confirm('حذف الروم نهائيًا؟')) return;
+  const hasMatches = eventMatches(id).length > 0;
+  const hasAssignments = eventAssignments(id).length > 0;
 
-  const { error } = await db.from('events')
-    .delete()
-    .eq('id', id);
+  const warning = (hasMatches || hasAssignments)
+    ? 'سيتم حذف جميع مواجهات الروم وتوزيع العوائل المرتبط به.\n'
+    : '';
 
-  if (error) return notify(error.message);
+  if (!confirm(
+    'هل تريد حذف الروم "' + ev.name + '" نهائيًا؟\n' +
+    warning
+  )) return;
+
+  const { error } = await db.rpc('zone_admin_delete_room', {
+    p_event_id: id
+  });
+
+  if (error) {
+    return notify('تعذر حذف الروم: ' + error.message);
+  }
 
   await fetchAll();
+  notify('تم حذف الروم ومواجهاته وتوزيعه بنجاح');
 }
 
-/* استبدال عائلة داخل الجدول - الصلاحية الجديدة */
+/* استبدال عائلة داخل جدول المواجهات */
 
 async function replaceMatchFamily(matchId, slot, replacementId) {
   if (!admin) return notify('ليس لديك صلاحية الإدارة');
@@ -896,7 +911,7 @@ function render() {
         '<button class="secondary" onclick="editRoom(\'' +
         e.id + '\')">تعديل</button>' +
         '<button class="danger" onclick="deleteRoom(\'' +
-        e.id + '\')">حذف</button>' +
+        e.id + '\')">حذف الروم</button>' +
         '</div></div>';
     }).join('') ||
     '<p class="muted">لم يتم إنشاء رومات بعد</p>';
@@ -1325,4 +1340,5 @@ function displayPublicMatches() {
 }
 
 /* تشغيل الموقع */
+
 fetchAll();
