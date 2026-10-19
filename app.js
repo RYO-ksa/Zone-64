@@ -356,3 +356,4 @@ for (const roomMatches of groups.values()) {
 
 
 displayPublicMatches();
+document.getElementById('publicMatches').textContent = 'اختبار ظهور الجدول';
