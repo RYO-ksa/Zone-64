@@ -1342,3 +1342,574 @@ function displayPublicMatches() {
 /* تشغيل الموقع */
 
 fetchAll();
+
+/* ===================================================
+   ZONE 64 - تحديث لوحة الإدارة
+   الحذف - الفرص - تعديل المواجهات - الرومات
+   الصق هذا الكود في نهاية app.js
+=================================================== */
+
+const zoneOriginalRender = render;
+const zoneOriginalFetchAll = fetchAll;
+const zoneOriginalFamilyName = familyName;
+
+let zoneArchivedFamilies = new Map();
+
+/* الاحتفاظ بأسماء العوائل السابقة لعرض النتائج */
+
+familyName = function (id) {
+  if (!id) return 'مكان شاغر';
+
+  return families.find(f => f.id === id)?.family ||
+    zoneArchivedFamilies.get(id) ||
+    'عائلة غير معروفة';
+};
+
+/* إخفاء المنسحبين من لوحة التسجيل */
+
+fetchAll = async function () {
+  await zoneOriginalFetchAll();
+
+  if (!admin) return;
+
+  zoneArchivedFamilies = new Map(
+    families.map(f => [f.id, f.family])
+  );
+
+  families = families.filter(f => f.is_active !== false);
+
+  render();
+};
+
+/* عدد الفرص المتاحة لكل عائلة */
+
+function zoneFamilyLimit(family) {
+  const value = Number(family.max_participations);
+  return Number.isInteger(value) && value >= 0
+    ? value
+    : 10;
+}
+
+/* تعديل عدد الفرص */
+
+async function zoneSetFamilyLimit(id) {
+  if (!admin) return;
+
+  const family = families.find(f => f.id === id);
+  if (!family) return notify('العائلة غير موجودة');
+
+  const current = zoneFamilyLimit(family);
+
+  const answer = prompt(
+    'كم عدد فرص المشاركة لعائلة ' + family.family + '؟',
+    String(current)
+  );
+
+  if (answer === null) return;
+
+  const value = Number(answer.trim());
+
+  if (
+    !Number.isSafeInteger(value) ||
+    value < 0 ||
+    answer.trim() === ''
+  ) {
+    return notify('اكتب عددًا صحيحًا من صفر فأعلى');
+  }
+
+  const { error } = await db.rpc(
+    'zone_admin_set_family_limit',
+    {
+      p_family_id: id,
+      p_limit: value
+    }
+  );
+
+  if (error) {
+    return notify('تعذر تغيير الفرص: ' + error.message);
+  }
+
+  await fetchAll();
+
+  notify(
+    'تم تحديد ' + value +
+    ' فرصة لعائلة ' + family.family
+  );
+}
+
+/* توزيع عائلة حسب فرصها الخاصة */
+
+assign = async function (familyId, eventId) {
+  if (!admin || !eventId) return;
+
+  const family = families.find(f => f.id === familyId);
+  const room = events.find(e => e.id === eventId);
+
+  if (!family) return notify('العائلة غير موجودة');
+
+  if (!room || room.published) {
+    return notify('يجب أن يكون الروم مخفيًا');
+  }
+
+  if (eventMatches(eventId).length) {
+    return notify('تم إنشاء مواجهات هذا الروم');
+  }
+
+  const used = assignments.filter(
+    a => a.family_id === familyId
+  );
+
+  if (used.length >= zoneFamilyLimit(family)) {
+    return notify('العائلة استنفدت فرص مشاركتها');
+  }
+
+  if (isQualified(familyId)) {
+    return notify('العائلة متأهلة بالفعل');
+  }
+
+  if (eventAssignments(eventId).length >= 8) {
+    return notify('الروم مكتمل');
+  }
+
+  if (used.some(a => a.event_id === eventId)) {
+    return notify('العائلة موجودة بالفعل في الروم');
+  }
+
+  const { error } = await db.from('assignments').insert({
+    family_id: familyId,
+    event_id: eventId
+  });
+
+  if (error) {
+    return notify('تعذر التوزيع: ' + error.message);
+  }
+
+  await fetchAll();
+  notify('تم توزيع العائلة بنجاح');
+};
+
+/* حذف العائلة المنسحبة */
+
+deleteFamily = async function (id) {
+  if (!admin) return;
+
+  const family = families.find(f => f.id === id);
+
+  if (!family) {
+    return notify('العائلة غير موجودة');
+  }
+
+  if (!confirm(
+    'حذف عائلة "' + family.family + '" من التسجيل؟\n\n' +
+    'لن تظهر في التسجيل والقرعات القادمة، ' +
+    'وستبقى نتائجها السابقة محفوظة.'
+  )) {
+    return;
+  }
+
+  const { error } = await db.rpc(
+    'zone_admin_withdraw_family',
+    { p_family_id: id }
+  );
+
+  if (error) {
+    return notify('تعذر الحذف: ' + error.message);
+  }
+
+  await fetchAll();
+
+  notify(
+    'تم حذف عائلة ' + family.family +
+    ' من التسجيل بنجاح'
+  );
+};
+
+/* تعديل طرفَي المواجهة بضغطة واحدة */
+
+async function zoneSaveMatchTeams(
+  matchId,
+  firstId,
+  secondId
+) {
+  if (!admin) return;
+
+  if (!firstId || !secondId) {
+    return notify('اختر العائلتين أولًا');
+  }
+
+  if (firstId === secondId) {
+    return notify('لا يمكن اختيار العائلة نفسها مرتين');
+  }
+
+  const match = roomMatches.find(m => m.id === matchId);
+
+  if (!match) {
+    return notify('المواجهة غير موجودة');
+  }
+
+  const firstName = familyName(firstId);
+  const secondName = familyName(secondId);
+
+  if (!confirm(
+    'حفظ طرفَي المواجهة؟\n\n' +
+    firstName + '\nضد\n' + secondName
+  )) {
+    return;
+  }
+
+  const { error } = await db.rpc(
+    'zone_admin_edit_match',
+    {
+      p_match_id: matchId,
+      p_first_id: firstId,
+      p_second_id: secondId
+    }
+  );
+
+  if (error) {
+    return notify(
+      'تعذر تعديل المواجهة: ' + error.message
+    );
+  }
+
+  await fetchAll();
+
+  notify('تم حفظ العائلتين وتحديث المواجهة');
+}
+
+/* أدوات إنشاء القوائم */
+
+function zoneCreateElement(tag, textValue, className) {
+  const el = document.createElement(tag);
+
+  if (textValue !== undefined) {
+    el.textContent = textValue;
+  }
+
+  if (className) {
+    el.className = className;
+  }
+
+  return el;
+}
+
+function zoneCreateSelect(value, candidates) {
+  const select = document.createElement('select');
+
+  select.style.cssText =
+    'width:100%;max-width:100%;margin:8px 0 12px';
+
+  const empty = document.createElement('option');
+  empty.value = '';
+  empty.textContent = 'اختر العائلة';
+  select.appendChild(empty);
+
+  for (const family of candidates) {
+    const option = document.createElement('option');
+
+    option.value = family.id;
+    option.textContent = family.family;
+
+    select.appendChild(option);
+  }
+
+  if (value && !candidates.some(f => f.id === value)) {
+    const oldOption = document.createElement('option');
+    oldOption.value = value;
+    oldOption.textContent = familyName(value);
+    select.appendChild(oldOption);
+  }
+
+  select.value = value || '';
+
+  return select;
+}
+
+/* لوحة تعديل طرفَي المواجهة */
+
+renderMatchFamilyEditor = function () {
+  let panel = $('matchFamilyEditor');
+
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'matchFamilyEditor';
+    panel.className = 'panel';
+    panel.style.marginTop = '20px';
+
+    $('roomControls').after(panel);
+  }
+
+  panel.replaceChildren();
+
+  panel.appendChild(
+    zoneCreateElement(
+      'h2',
+      'تعديل مواجهات دور الثمانية'
+    )
+  );
+
+  panel.appendChild(
+    zoneCreateElement(
+      'p',
+      'اختر الروم، ثم حدد العائلتين في المواجهة واضغط حفظ مرة واحدة.',
+      'muted'
+    )
+  );
+
+  for (const room of events) {
+    const roomDetails = document.createElement('details');
+
+    roomDetails.style.cssText =
+      'margin:12px 0;padding:12px;' +
+      'border:1px solid #73505d;border-radius:12px';
+
+    const summary = document.createElement('summary');
+
+    summary.style.cssText =
+      'cursor:pointer;font-weight:bold;padding:8px';
+
+    summary.textContent =
+      room.name + ' — ' + room.event_date;
+
+    roomDetails.appendChild(summary);
+
+    const matches = eventMatches(room.id)
+      .filter(m => m.round_number === 1);
+
+    const hasResults =
+      eventMatches(room.id).some(
+        m => Boolean(m.winner_family_id)
+      ) ||
+      results.some(r => r.event_id === room.id);
+
+    if (!matches.length) {
+      roomDetails.appendChild(
+        zoneCreateElement(
+          'p',
+          'لم يتم إنشاء مواجهات لهذا الروم',
+          'muted'
+        )
+      );
+
+      panel.appendChild(roomDetails);
+      continue;
+    }
+
+    if (hasResults) {
+      roomDetails.appendChild(
+        zoneCreateElement(
+          'p',
+          'هذا الروم بدأت نتائجه؛ التعديل مقفل لحماية النتائج السابقة.',
+          'muted'
+        )
+      );
+    }
+
+    for (const match of matches) {
+      const card = document.createElement('div');
+
+      card.className = 'team';
+      card.style.cssText =
+        'display:block;margin:12px 0;padding:15px;' +
+        'border:1px solid #73505d;border-radius:12px';
+
+      card.appendChild(
+        zoneCreateElement(
+          'h3',
+          'المواجهة ' + match.match_number
+        )
+      );
+
+      const firstLabel = zoneCreateElement(
+        'p',
+        'العائلة الأولى'
+      );
+
+      const secondLabel = zoneCreateElement(
+        'p',
+        'العائلة الثانية'
+      );
+
+      const firstSelect = zoneCreateSelect(
+        match.first_family_id,
+        families
+      );
+
+      const secondSelect = zoneCreateSelect(
+        match.second_family_id,
+        families
+      );
+
+      firstSelect.disabled = hasResults;
+      secondSelect.disabled = hasResults;
+
+      const save = document.createElement('button');
+
+      save.type = 'button';
+      save.textContent = 'حفظ طرفَي المواجهة';
+      save.disabled = hasResults;
+
+      save.style.cssText =
+        'width:100%;margin-top:10px';
+
+      save.addEventListener('click', () => {
+        zoneSaveMatchTeams(
+          match.id,
+          firstSelect.value,
+          secondSelect.value
+        );
+      });
+
+      card.append(
+        firstLabel,
+        firstSelect,
+        secondLabel,
+        secondSelect,
+        save
+      );
+
+      roomDetails.appendChild(card);
+    }
+
+    panel.appendChild(roomDetails);
+  }
+};
+
+/* تحويل قوائم الرومات إلى أقسام قابلة للفتح */
+
+function zoneCollapseRooms(containerId) {
+  const container = $(containerId);
+
+  if (!container) return;
+
+  const children = Array.from(container.children);
+
+  children.forEach((child, index) => {
+    if (
+      child.tagName === 'DETAILS' ||
+      !child.querySelector('h2, b')
+    ) {
+      return;
+    }
+
+    const heading = child.querySelector('h2, b');
+
+    const room = events[index];
+
+    if (!room) return;
+
+    const details = document.createElement('details');
+    details.className = 'zone-room-accordion';
+
+    details.style.cssText =
+      'margin:12px 0;border:1px solid #73505d;' +
+      'border-radius:12px;padding:10px';
+
+    const summary = document.createElement('summary');
+
+    summary.style.cssText =
+      'cursor:pointer;font-weight:bold;padding:10px';
+
+    summary.textContent =
+      room.name + ' — ' + room.event_date +
+      (room.published ? ' • منشور' : ' • مخفي');
+
+    details.appendChild(summary);
+    details.appendChild(child);
+
+    container.appendChild(details);
+  });
+}
+
+/* تحديث عرض العوائل والرومات */
+
+render = function () {
+  if (admin) {
+    zoneArchivedFamilies = new Map([
+      ...zoneArchivedFamilies,
+      ...families.map(f => [f.id, f.family])
+    ]);
+
+    families = families.filter(
+      f => f.is_active !== false
+    );
+  }
+
+  zoneOriginalRender();
+
+  if (!admin) return;
+
+  /* تحديث عداد الفرص وأزرار العوائل */
+
+  const cards = Array.from(
+    $('requests').querySelectorAll('.team')
+  );
+
+  families.forEach((family, index) => {
+    const card = cards[index];
+
+    if (!card) return;
+
+    const used = assignments.filter(
+      a => a.family_id === family.id
+    ).length;
+
+    const limit = zoneFamilyLimit(family);
+
+    const smalls = card.querySelectorAll('small');
+
+    if (smalls[1]) {
+      smalls[1].textContent =
+        'المشاركات: ' + used + '/' + limit +
+        (isQualified(family.id) ? ' • متأهلة' : '');
+    }
+
+    const actions = card.querySelector('.team-actions');
+
+    if (!actions) return;
+
+    const buttons = Array.from(
+      actions.querySelectorAll('button')
+    );
+
+    const assignButton = buttons.find(
+      b => b.textContent.trim() === 'توزيع'
+    );
+
+    if (assignButton) {
+      assignButton.disabled =
+        isQualified(family.id) ||
+        used >= limit;
+    }
+
+    const deleteButton = buttons.find(
+      b => b.textContent.includes('حذف من التسجيل')
+    );
+
+    if (deleteButton) {
+      deleteButton.textContent = 'حذف العائلة نهائيًا';
+    }
+
+    const limitButton = document.createElement('button');
+
+    limitButton.type = 'button';
+    limitButton.className = 'secondary';
+    limitButton.textContent = 'تعديل الفرص (' + limit + ')';
+
+    limitButton.addEventListener('click', () => {
+      zoneSetFamilyLimit(family.id);
+    });
+
+    actions.appendChild(limitButton);
+  });
+
+  /* الرومات تفتح وتقفل بالضغط */
+
+  zoneCollapseRooms('roomControls');
+  zoneCollapseRooms('resultControls');
+};
+
+/* إعادة تحميل البيانات بعد تركيب التحديث */
+
+fetchAll();
+
