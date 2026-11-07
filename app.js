@@ -1913,3 +1913,175 @@ render = function () {
 
 fetchAll();
 
+/* =========================================
+   ZONE 64
+   طي وفتح الأقسام الثلاثة في لوحة الإدارة
+   ========================================= */
+
+const zonePreviousRender = render;
+
+const zoneOpenSections = new Map();
+
+/* إنشاء قسم قابل للفتح والإغلاق */
+
+function zoneMakeAccordion(title, content, key) {
+  const details = document.createElement('details');
+  details.className = 'zone-accordion';
+
+  details.style.cssText = `
+    margin: 12px 0;
+    padding: 12px;
+    border: 1px solid #73505d;
+    border-radius: 14px;
+    background: #24151b;
+  `;
+
+  const summary = document.createElement('summary');
+
+  summary.textContent = title;
+  summary.style.cssText = `
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 19px;
+    padding: 10px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+  `;
+
+  details.open = zoneOpenSections.get(key) || false;
+
+  details.addEventListener('toggle', () => {
+    if (details.isConnected) {
+      zoneOpenSections.set(key, details.open);
+    }
+  });
+
+  details.append(summary, content);
+
+  return details;
+}
+
+/* طي قسم كامل مع الاحتفاظ بالأزرار */
+
+function zoneCollapseSection(containerId, title, key) {
+  const container = document.getElementById(containerId);
+
+  if (!container) return;
+
+  const panel = container.closest('.panel');
+
+  if (!panel) return;
+
+  if (panel.dataset.zoneCollapsed === key) return;
+
+  const content = document.createElement('div');
+
+  const children = Array.from(panel.children);
+
+  children.forEach(child => {
+    content.appendChild(child);
+  });
+
+  const accordion = zoneMakeAccordion(
+    title,
+    content,
+    key
+  );
+
+  panel.appendChild(accordion);
+
+  panel.dataset.zoneCollapsed = key;
+}
+
+/* جعل كل روم في القرعة يفتح لحاله */
+
+function zoneCollapseRoomCards() {
+  const container = document.getElementById('roomControls');
+
+  if (!container) return;
+
+  const cards = Array.from(container.children)
+    .filter(child => child.classList.contains('team'));
+
+  cards.forEach((card, index) => {
+    const room = events[index];
+
+    if (!room) return;
+
+    const title =
+      room.name + ' — ' +
+      room.event_date + ' • ' +
+      (room.published ? 'منشور' : 'مخفي');
+
+    const accordion = zoneMakeAccordion(
+      title,
+      card,
+      'draw-room-' + room.id
+    );
+
+    container.appendChild(accordion);
+  });
+}
+
+/* طي قسم تعديل مواجهات دور الثمانية */
+
+function zoneCollapseMatchEditor() {
+  const panel = document.getElementById('matchFamilyEditor');
+
+  if (!panel) return;
+
+  if (panel.dataset.zoneCollapsed === 'match-editor') {
+    return;
+  }
+
+  const content = document.createElement('div');
+
+  Array.from(panel.children).forEach(child => {
+    content.appendChild(child);
+  });
+
+  const accordion = zoneMakeAccordion(
+    'تعديل مواجهات دور الثمانية',
+    content,
+    'match-editor'
+  );
+
+  panel.appendChild(accordion);
+
+  panel.dataset.zoneCollapsed = 'match-editor';
+}
+
+/* إعادة ترتيب لوحة الإدارة بعد عرض البيانات */
+
+render = function () {
+  zonePreviousRender();
+
+  if (!admin) return;
+
+  /* القسم الأول: العوائل */
+
+  zoneCollapseSection(
+    'requests',
+    'قائمة انتظار العوائل وبيانات المنسقين',
+    'families-section'
+  );
+
+  /* القسم الثاني: القرعة والرومات */
+
+  zoneCollapseRoomCards();
+
+  zoneCollapseSection(
+    'roomControls',
+    'القرعة العشوائية وإدارة الرومات',
+    'rooms-section'
+  );
+
+  /* القسم الثالث: تعديل المواجهات */
+
+  zoneCollapseMatchEditor();
+};
+
+/* تطبيق التحديث */
+
+render();
+
