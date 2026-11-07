@@ -13,7 +13,7 @@
   color:#f6eeee;
   background:#09090c;
   --red:#f02a35;
-  --red2:#9e101c;
+  --red2:#a9101d;
   --bg:#09090c;
   --card:#171116;
   --card2:#21151b;
@@ -21,28 +21,20 @@
   --muted:#b9a6a9;
 }
 
-*{
-  box-sizing:border-box
-}
+*{box-sizing:border-box}
 
-html{
-  scroll-behavior:smooth
-}
+html{scroll-behavior:smooth}
 
 body{
   margin:0;
   min-height:100vh;
   background:
-    radial-gradient(circle at 50% -10%,rgba(180,20,35,.18),transparent 35%),
+    radial-gradient(circle at 50% -10%,rgba(180,20,35,.15),transparent 35%),
     linear-gradient(180deg,#09090d,#0d080b 50%,#08080b);
-  padding-bottom:88px;
+  padding-bottom:95px;
 }
 
-button,
-input,
-select{
-  font-family:inherit
-}
+button,input,select{font-family:inherit}
 
 button{
   background:linear-gradient(135deg,#ff414b,#a9101d);
@@ -52,62 +44,53 @@ button{
   padding:11px 15px;
   font-weight:bold;
   cursor:pointer;
-  box-shadow:0 5px 18px #d7192828
+  box-shadow:0 5px 18px #d7192828;
 }
 
-button:active{
-  transform:scale(.98)
-}
-
-button:disabled{
-  opacity:.4;
-  cursor:not-allowed
-}
+button:active{transform:scale(.98)}
+button:disabled{opacity:.4;cursor:not-allowed}
 
 button.secondary{
   background:#21171c;
   color:#eee;
   border-color:#59333b;
-  box-shadow:none
+  box-shadow:none;
 }
 
 button.danger{
   background:#551a22;
   border-color:#8a2c37;
-  box-shadow:none
+  box-shadow:none;
 }
 
-/* رأس الصفحة */
+/* أعلى الموقع */
 
 .topbar{
-  position:sticky;
-  top:0;
-  z-index:50;
-  height:58px;
+  height:75px;
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:0 16px;
-  background:rgba(9,9,12,.91);
-  border-bottom:1px solid #39232a;
-  backdrop-filter:blur(14px)
+  padding:10px 16px;
+  background:#09090c;
+  border-bottom:1px solid #3c232a;
 }
 
 .brand{
   text-align:center;
-  line-height:1.2
 }
 
 .brand strong{
   display:block;
   color:#ff5059;
-  font-size:14px;
-  letter-spacing:2px
+  font-size:17px;
+  letter-spacing:3px;
 }
 
 .brand small{
-  color:#a99599;
-  font-size:10px
+  display:block;
+  color:#9f8c91;
+  margin-top:6px;
+  font-size:10px;
 }
 
 /* المحتوى */
@@ -115,55 +98,38 @@ button.danger{
 main{
   max-width:1050px;
   margin:auto;
-  padding:18px 14px
+  padding:18px 14px;
 }
 
-.section{
-  display:none;
-  animation:fade .18s ease
-}
+.section{display:none}
 
 .section.active{
-  display:block
+  display:block;
+  animation:sectionFade .15s ease;
 }
 
-@keyframes fade{
-  from{opacity:.35;transform:translateY(4px)}
-  to{opacity:1;transform:none}
+@keyframes sectionFade{
+  from{opacity:.5}
+  to{opacity:1}
 }
 
 h1{
   color:#fff;
   font-size:25px;
-  margin:5px 0 17px
+  margin:5px 0 17px;
 }
 
 h2{
   color:#f3e5e5;
   font-size:18px;
-  margin-top:5px
 }
 
-h3{
-  font-size:15px
-}
+h3{font-size:15px}
 
-.muted,
-small{
-  color:var(--muted)
-}
+.muted,small{color:var(--muted)}
+.tag{color:#ff5962;font-weight:bold}
 
-.tag{
-  color:#ff5962;
-  font-weight:bold
-}
-
-/* تنبيه */
-
-#feedback{
-  position:relative;
-  z-index:10
-}
+/* التنبيهات */
 
 .notice{
   background:#26151b;
@@ -172,7 +138,7 @@ small{
   padding:13px;
   border-radius:9px;
   margin:12px 0;
-  font-size:13px
+  font-size:13px;
 }
 
 /* الرئيسية */
@@ -190,29 +156,9 @@ small{
   border:1px solid #552832;
   border-radius:20px;
   background:
-    radial-gradient(circle at 50% 30%,rgba(232,31,46,.18),transparent 38%),
+    radial-gradient(circle at 50% 28%,rgba(232,31,46,.17),transparent 40%),
     linear-gradient(160deg,#1a1116,#09090c 70%);
-  box-shadow:0 18px 55px #0009
-}
-
-.hero:before{
-  content:"";
-  position:absolute;
-  width:240px;
-  height:240px;
-  border:1px solid rgba(235,45,59,.13);
-  border-radius:50%;
-  top:-100px;
-  left:50%;
-  transform:translateX(-50%);
-  box-shadow:
-    0 0 80px rgba(242,31,48,.08),
-    inset 0 0 60px rgba(242,31,48,.05)
-}
-
-.hero>*{
-  position:relative;
-  z-index:1
+  box-shadow:0 18px 55px #0009;
 }
 
 .hero-symbol{
@@ -221,39 +167,36 @@ small{
   display:flex;
   align-items:center;
   justify-content:center;
-  margin-bottom:12px;
+  margin-bottom:14px;
   border-radius:18px;
   background:#1c1116;
   border:1px solid #7b303c;
   color:#ff4652;
   font-size:35px;
-  box-shadow:0 0 35px rgba(240,42,53,.18)
+  box-shadow:0 0 35px rgba(240,42,53,.18);
 }
 
 .hero-kicker{
   color:#cf9ca4;
   font-size:11px;
-  letter-spacing:1px
+  letter-spacing:1px;
 }
 
 .hero h1{
-  font-size:clamp(35px,9vw,62px);
-  margin:8px 0;
+  font-size:clamp(35px,9vw,60px);
+  margin:10px 0;
   color:#fff;
   font-weight:900;
-  text-shadow:0 0 28px rgba(242,42,53,.28)
 }
 
 .hero p{
-  max-width:650px;
+  max-width:620px;
   font-size:13px;
   line-height:1.9;
-  margin:6px auto 18px
+  margin:8px auto 19px;
 }
 
-.hero button{
-  min-width:160px
-}
+.hero button{min-width:165px}
 
 /* الإحصائيات */
 
@@ -261,11 +204,11 @@ small{
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:8px;
-  margin:13px 0
+  margin:13px 0;
 }
 
 .stats.two{
-  grid-template-columns:repeat(2,1fr)
+  grid-template-columns:repeat(2,1fr);
 }
 
 .stat{
@@ -274,53 +217,69 @@ small{
   border:1px solid #482831;
   border-radius:13px;
   padding:14px 6px;
-  text-align:center
+  text-align:center;
 }
 
 .stat strong{
   display:block;
   color:#ff4652;
   font-size:25px;
-  margin-bottom:5px
+  margin-bottom:5px;
 }
 
 .stat small{
   font-size:10px;
-  line-height:1.4;
-  display:block
+  line-height:1.5;
+  display:block;
 }
 
-/* Panels */
+/* اختصارات الرئيسية */
+
+.home-links{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:7px;
+  margin-top:12px;
+}
+
+.home-link{
+  background:#1d1318;
+  border:1px solid #4d2932;
+  color:#eee;
+  box-shadow:none;
+  padding:13px 5px;
+  font-size:11px;
+}
+
+/* البانل */
 
 .panel{
   background:linear-gradient(145deg,rgba(29,19,24,.97),rgba(13,11,14,.98));
   border:1px solid #4d2932;
   border-radius:15px;
   padding:17px;
-  box-shadow:0 10px 30px #0006
+  box-shadow:0 10px 30px #0006;
+  margin-bottom:12px;
 }
 
 .grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:12px
+  gap:12px;
 }
 
-/* Forms */
+/* النماذج */
 
-.field{
-  margin:11px 0
-}
+.field{margin:11px 0}
 
 label{
   display:block;
   color:#e3d3d5;
   font-size:13px;
-  margin:10px 0
+  margin:10px 0;
 }
 
-input,
-select{
+input,select{
   display:block;
   width:100%;
   background:#100d10;
@@ -329,17 +288,16 @@ select{
   border-radius:10px;
   padding:12px;
   margin-top:7px;
-  font-size:16px
+  font-size:16px;
 }
 
-input:focus,
-select:focus{
+input:focus,select:focus{
   outline:none;
   border-color:#d33a47;
-  box-shadow:0 0 0 2px rgba(211,58,71,.13)
+  box-shadow:0 0 0 2px rgba(211,58,71,.13);
 }
 
-/* Teams */
+/* العوائل */
 
 .team{
   background:#20151a;
@@ -352,36 +310,49 @@ select:focus{
   justify-content:space-between;
   gap:9px;
   flex-wrap:wrap;
-  font-size:13px
+  font-size:13px;
 }
 
 .team>div{
   min-width:0;
-  overflow-wrap:anywhere
+  overflow-wrap:anywhere;
 }
 
 .team-actions{
   display:flex;
   gap:5px;
   flex-wrap:wrap;
-  width:100%
+  width:100%;
 }
 
 .team-actions button{
   font-size:11px;
-  padding:8px 10px
+  padding:8px 10px;
 }
 
 .team-actions select{
   flex-basis:100%;
   font-size:13px;
-  padding:9px
+  padding:9px;
 }
 
-/* Admin accordion */
+/* الإدارة */
+
+#adminLogin{
+  max-width:430px;
+  margin:25px auto;
+}
 
 #adminTools>.panel{
-  margin-top:12px
+  margin-top:12px;
+}
+
+.admin-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:14px;
 }
 
 .zone-accordion{
@@ -389,7 +360,7 @@ select:focus{
   border-radius:12px;
   background:#171116;
   margin:10px 0;
-  overflow:hidden
+  overflow:hidden;
 }
 
 .zone-accordion>summary{
@@ -398,15 +369,15 @@ select:focus{
   font-weight:bold;
   font-size:14px;
   line-height:1.6;
-  overflow-wrap:anywhere
+  overflow-wrap:anywhere;
 }
 
 .zone-accordion[open]>summary{
-  border-bottom:1px solid #482b32
+  border-bottom:1px solid #482b32;
 }
 
 .zone-accordion-body{
-  padding:12px
+  padding:12px;
 }
 
 .zone-editor-card{
@@ -414,7 +385,7 @@ select:focus{
   margin:9px 0;
   border:1px solid #4f2b34;
   border-radius:11px;
-  background:#21151b
+  background:#21151b;
 }
 
 /* نتائج الإدارة */
@@ -423,12 +394,12 @@ select:focus{
   display:flex;
   gap:8px;
   overflow:auto;
-  padding:8px 0
+  padding:8px 0;
 }
 
 .round{
   min-width:190px;
-  flex:1
+  flex:1;
 }
 
 .match{
@@ -437,24 +408,22 @@ select:focus{
   border-radius:9px;
   margin:8px 0;
   padding:9px;
-  font-size:12px
+  font-size:12px;
 }
 
 .match div{
   padding:5px;
-  border-bottom:1px solid #42262e
+  border-bottom:1px solid #42262e;
 }
 
-.match div:last-child{
-  border:0
-}
+.match div:last-child{border:0}
 
 /* المنظمون */
 
 .organizers-grid{
   display:grid;
   grid-template-columns:repeat(2,1fr);
-  gap:10px
+  gap:10px;
 }
 
 .organizer-card{
@@ -466,18 +435,7 @@ select:focus{
   border:1px solid #4c2931;
   border-radius:16px;
   padding:19px 8px 15px;
-  text-align:center
-}
-
-.organizer-card:before{
-  content:"";
-  position:absolute;
-  top:0;
-  left:25%;
-  right:25%;
-  height:1px;
-  background:#f43c48;
-  box-shadow:0 0 12px #f43c48
+  text-align:center;
 }
 
 .organizer-card img{
@@ -490,7 +448,6 @@ select:focus{
   border:2px solid #a73b47;
   padding:2px;
   background:#0c0b0e;
-  box-shadow:0 0 22px rgba(232,47,61,.16)
 }
 
 .organizer-name{
@@ -502,24 +459,17 @@ select:focus{
   display:flex;
   align-items:center;
   justify-content:center;
-  overflow-wrap:anywhere
+  overflow-wrap:anywhere;
 }
 
 .organizer-id{
   color:#9f8b8f;
   font-size:10px;
   direction:ltr;
-  margin-top:5px
+  margin-top:5px;
 }
 
-/* تسجيل الإدارة */
-
-#adminLogin{
-  max-width:440px;
-  margin:35px auto
-}
-
-/* Bottom navigation */
+/* الشريط السفلي */
 
 .bottom-nav{
   position:fixed;
@@ -527,18 +477,18 @@ select:focus{
   bottom:0;
   left:0;
   right:0;
-  min-height:67px;
+  min-height:72px;
   padding:
     6px
-    max(6px,env(safe-area-inset-right))
+    max(5px,env(safe-area-inset-right))
     calc(6px + env(safe-area-inset-bottom))
-    max(6px,env(safe-area-inset-left));
-  background:rgba(10,9,12,.96);
-  border-top:1px solid #44262e;
+    max(5px,env(safe-area-inset-left));
+  background:rgba(8,8,11,.97);
+  border-top:1px solid #3f242b;
   backdrop-filter:blur(18px);
   display:grid;
   grid-template-columns:repeat(5,1fr);
-  box-shadow:0 -8px 30px #0009
+  box-shadow:0 -8px 30px #000b;
 }
 
 .nav-item{
@@ -554,81 +504,50 @@ select:focus{
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  gap:3px;
+  gap:4px;
   font-size:9px;
-  font-weight:normal
+  font-weight:normal;
 }
 
 .nav-item:active{
   transform:none;
-  background:#1c1317
+  background:#1c1317;
 }
 
-.nav-item .nav-icon{
-  width:22px;
-  height:22px;
+.nav-item.active-nav{
+  color:#ff4c56;
+}
+
+.nav-icon{
+  width:23px;
+  height:23px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:17px
+  font-size:18px;
 }
 
-.nav-item.primary{
-  color:#ff4c56
-}
-
-/* زر المزيد */
-
-.more-menu{
-  position:fixed;
-  z-index:110;
-  left:10px;
-  right:10px;
-  bottom:78px;
-  background:#151115;
-  border:1px solid #503039;
-  border-radius:16px;
-  padding:8px;
-  box-shadow:0 20px 55px #000;
-  display:none
-}
-
-.more-menu.open{
-  display:block
-}
-
-.more-menu button{
-  width:100%;
-  display:block;
-  margin:4px 0;
-  text-align:right;
-  background:#21161b;
-  border-color:#43272e;
-  box-shadow:none;
-  font-size:13px
-}
-
-/* Footer */
+/* الفوتر */
 
 footer{
   text-align:center;
-  padding:30px 15px 12px;
+  padding:28px 15px 12px;
   color:#77686c;
-  font-size:10px
+  font-size:10px;
 }
 
 @media(min-width:700px){
   main{
-    padding:26px 20px
+    padding:26px 20px;
   }
 
   .organizers-grid{
-    grid-template-columns:repeat(4,1fr)
+    grid-template-columns:repeat(4,1fr);
   }
 
   .organizer-card img{
     width:92px;
-    height:92px
+    height:92px;
   }
 
   .bottom-nav{
@@ -638,54 +557,46 @@ footer{
     width:600px;
     bottom:12px;
     border:1px solid #44262e;
-    border-radius:18px
+    border-radius:18px;
   }
 
   body{
-    padding-bottom:105px
-  }
-
-  .more-menu{
-    left:50%;
-    right:auto;
-    width:400px;
-    transform:translateX(-50%);
-    bottom:95px
+    padding-bottom:105px;
   }
 }
 
 @media(max-width:420px){
   main{
-    padding:13px 10px
+    padding:13px 10px;
   }
 
   .hero{
     min-height:285px;
-    padding:32px 13px
+    padding:32px 13px;
   }
 
   .hero h1{
-    font-size:38px
+    font-size:38px;
   }
 
   .stats{
-    gap:5px
+    gap:5px;
   }
 
   .stat{
-    padding:11px 4px
+    padding:11px 4px;
   }
 
   .stat strong{
-    font-size:21px
+    font-size:21px;
   }
 
   .stat small{
-    font-size:9px
+    font-size:9px;
   }
 
   .panel{
-    padding:13px
+    padding:13px;
   }
 }
 </style>
@@ -719,12 +630,10 @@ footer{
     <h1>المنطقة المحظورة</h1>
 
     <p class="muted">
-      سجّل عائلتك في قائمة الانتظار، وتدخل العوائل
-      في فعاليات التأهل الأسبوعية للوصول إلى مقاعد
-      المنطقة المحظورة.
+      سجّل عائلتك في قائمة الانتظار، وتدخل العوائل في فعاليات التأهل الأسبوعية للوصول إلى مقاعد المنطقة المحظورة.
     </p>
 
-    <button onclick="show('register')">
+    <button onclick="showPage('register')">
       طلب المشاركة
     </button>
 
@@ -769,9 +678,31 @@ footer{
 
   </div>
 
+  <div class="home-links">
+
+    <button
+      class="home-link"
+      onclick="showPage('register')">
+      تسجيل العوائل
+    </button>
+
+    <button
+      class="home-link"
+      onclick="showPage('families')">
+      العوائل المسجلة
+    </button>
+
+    <button
+      class="home-link"
+      onclick="showPage('events')">
+      الفعاليات
+    </button>
+
+  </div>
+
 </section>
 
-<!-- التسجيل -->
+<!-- تسجيل العوائل -->
 
 <section id="register" class="section">
 
@@ -837,7 +768,7 @@ footer{
 
 </section>
 
-<!-- العوائل -->
+<!-- العوائل المسجلة -->
 
 <section id="families" class="section">
 
@@ -855,7 +786,7 @@ footer{
 
 </section>
 
-<!-- الجداول -->
+<!-- الفعاليات -->
 
 <section id="events" class="section">
 
@@ -889,10 +820,7 @@ footer{
 
       <h2>🏆 المنطقة المحظورة</h2>
 
-      <p
-        id="mainCount"
-        class="tag">
-      </p>
+      <p id="mainCount" class="tag"></p>
 
       <div id="mainSeats"></div>
 
@@ -904,10 +832,7 @@ footer{
         محاولة الدخول إلى المنطقة المحظورة
       </h2>
 
-      <p
-        id="secondCount"
-        class="tag">
-      </p>
+      <p id="secondCount" class="tag"></p>
 
       <div id="secondSeats"></div>
 
@@ -927,9 +852,7 @@ footer{
 
     <div class="organizer-card">
 
-      <img
-        src="IMG_2147.jpeg"
-        alt="RYO">
+      <img src="IMG_2147.jpeg" alt="RYO">
 
       <div class="organizer-name">
         ʀ ʏ ᴏ ⌁ | ⭐️
@@ -943,9 +866,7 @@ footer{
 
     <div class="organizer-card">
 
-      <img
-        src="IMG_2270.jpeg"
-        alt="Rabaab">
+      <img src="IMG_2270.jpeg" alt="Rabaab">
 
       <div class="organizer-name">
         ᴿᴬᴮᴬᴬᴮ ཐི༏ཋྀ
@@ -959,9 +880,7 @@ footer{
 
     <div class="organizer-card">
 
-      <img
-        src="IMG_2271.jpeg"
-        alt="ESMAEL">
+      <img src="IMG_2271.jpeg" alt="ESMAEL">
 
       <div class="organizer-name">
         𝙴𝚂𝙼𝙰𝙴𝙻⁹⁶ ཐི༏ཋྀ
@@ -975,9 +894,7 @@ footer{
 
     <div class="organizer-card">
 
-      <img
-        src="IMG_2272.jpeg"
-        alt="507">
+      <img src="IMG_2272.jpeg" alt="507">
 
       <div class="organizer-name">
         507 |⭐️
@@ -997,49 +914,78 @@ footer{
 
 <section id="admin" class="section">
 
-  <h1>لوحة الإدارة</h1>
+  <div class="admin-head">
 
-  <div
-    id="adminLogin"
-    class="panel">
+    <h1>لوحة الإدارة</h1>
+
+  </div>
+
+  <!-- تسجيل دخول الإدارة -->
+
+  <div id="adminLogin" class="panel">
 
     <h2>دخول المنظم</h2>
+
+    <p class="muted">
+      سجّل الدخول بحساب الإدارة للوصول إلى أدوات إدارة البطولة.
+    </p>
 
     <form id="loginForm">
 
       <label>
         البريد الإلكتروني
+
         <input
           type="email"
           name="email"
           required
-          autocomplete="username">
+          autocomplete="username"
+          placeholder="البريد الإلكتروني">
       </label>
 
       <label>
         كلمة المرور
+
         <input
           type="password"
           name="password"
           required
-          autocomplete="current-password">
+          autocomplete="current-password"
+          placeholder="كلمة المرور">
       </label>
 
       <button type="submit">
-        دخول
+        تسجيل الدخول
       </button>
 
     </form>
 
   </div>
 
+  <!-- أدوات الإدارة -->
+
   <div id="adminTools" hidden>
 
-    <button
-      class="secondary"
-      onclick="logout()">
-      تسجيل الخروج
-    </button>
+    <div class="panel">
+
+      <div class="admin-head">
+
+        <div>
+          <h2>الإدارة</h2>
+          <small>أدوات التحكم بالفعالية</small>
+        </div>
+
+        <button
+          class="secondary"
+          onclick="logout()">
+          تسجيل الخروج
+        </button>
+
+      </div>
+
+    </div>
+
+    <!-- التسجيل -->
 
     <div class="panel">
 
@@ -1053,6 +999,8 @@ footer{
 
     </div>
 
+    <!-- إنشاء روم -->
+
     <div class="panel">
 
       <h2>إنشاء روم</h2>
@@ -1061,6 +1009,7 @@ footer{
 
         <label>
           اسم الفعالية
+
           <input
             name="name"
             required
@@ -1069,6 +1018,7 @@ footer{
 
         <label>
           تاريخ الروم
+
           <input
             name="date"
             type="date"
@@ -1077,6 +1027,7 @@ footer{
 
         <label>
           وقت الروم
+
           <input
             name="time"
             type="time"
@@ -1091,6 +1042,8 @@ footer{
       </form>
 
     </div>
+
+    <!-- العوائل -->
 
     <details
       class="zone-accordion"
@@ -1114,6 +1067,8 @@ footer{
 
     </details>
 
+    <!-- الرومات -->
+
     <details
       class="zone-accordion"
       id="roomsAccordion">
@@ -1125,8 +1080,7 @@ footer{
       <div class="zone-accordion-body">
 
         <p class="muted">
-          أنشئ الروم ثم نفّذ القرعة لاختيار
-          8 عوائل وإنشاء المواجهات.
+          أنشئ الروم، ثم نفّذ القرعة لاختيار 8 عوائل وإنشاء المواجهات.
         </p>
 
         <div id="roomControls"></div>
@@ -1134,6 +1088,8 @@ footer{
       </div>
 
     </details>
+
+    <!-- تعديل المواجهات -->
 
     <details
       class="zone-accordion"
@@ -1146,7 +1102,7 @@ footer{
       <div class="zone-accordion-body">
 
         <p class="muted">
-          اختر العائلتين ثم احفظ المواجهة.
+          اختر طرفَي المواجهة ثم اضغط حفظ مرة واحدة.
         </p>
 
         <div id="matchFamilyEditor"></div>
@@ -1154,6 +1110,8 @@ footer{
       </div>
 
     </details>
+
+    <!-- النتائج -->
 
     <details
       class="zone-accordion"
@@ -1177,33 +1135,14 @@ footer{
 
 </main>
 
-<!-- قائمة المزيد -->
-
-<div
-  id="moreMenu"
-  class="more-menu">
-
-  <button onclick="navTo('register')">
-    تسجيل العوائل
-  </button>
-
-  <button onclick="navTo('families')">
-    العوائل المسجلة
-  </button>
-
-  <button onclick="navTo('events')">
-    الفعاليات
-  </button>
-
-</div>
-
 <!-- الشريط السفلي -->
 
 <nav class="bottom-nav">
 
   <button
-    class="nav-item primary"
-    onclick="navTo('home')">
+    class="nav-item active-nav"
+    data-page="home"
+    onclick="showPage('home')">
 
     <span class="nav-icon">⌂</span>
     <span>الرئيسية</span>
@@ -1212,16 +1151,18 @@ footer{
 
   <button
     class="nav-item"
-    onclick="navTo('matches')">
+    data-page="matches"
+    onclick="showPage('matches')">
 
-    <span class="nav-icon">◫</span>
+    <span class="nav-icon">▣</span>
     <span>المواجهات</span>
 
   </button>
 
   <button
     class="nav-item"
-    onclick="navTo('organizers')">
+    data-page="organizers"
+    onclick="showPage('organizers')">
 
     <span class="nav-icon">♟</span>
     <span>المنظمون</span>
@@ -1230,19 +1171,21 @@ footer{
 
   <button
     class="nav-item"
-    onclick="navTo('qualify')">
+    data-page="qualify"
+    onclick="showPage('qualify')">
 
-    <span class="nav-icon">♛</span>
+    <span class="nav-icon">★</span>
     <span>التأهل</span>
 
   </button>
 
   <button
     class="nav-item"
-    onclick="toggleMore()">
+    data-page="admin"
+    onclick="showPage('admin')">
 
-    <span class="nav-icon">•••</span>
-    <span>المزيد</span>
+    <span class="nav-icon">⚙</span>
+    <span>الإدارة</span>
 
   </button>
 
@@ -1253,46 +1196,28 @@ footer{
 </footer>
 
 <script>
-function closeMore(){
-  const menu = document.getElementById('moreMenu');
-  if(menu){
-    menu.classList.remove('open');
-  }
-}
+function showPage(id){
 
-function toggleMore(){
-  const menu = document.getElementById('moreMenu');
-  if(menu){
-    menu.classList.toggle('open');
-  }
-}
-
-function navTo(id){
-  closeMore();
   show(id);
+
+  document
+    .querySelectorAll('.nav-item')
+    .forEach(function(button){
+
+      button.classList.toggle(
+        'active-nav',
+        button.dataset.page === id
+      );
+
+    });
 }
-
-document.addEventListener('click',function(event){
-  const menu = document.getElementById('moreMenu');
-
-  if(!menu || !menu.classList.contains('open')){
-    return;
-  }
-
-  if(
-    menu.contains(event.target) ||
-    event.target.closest('[onclick="toggleMore()"]')
-  ){
-    return;
-  }
-
-  closeMore();
-});
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <script src="config.js"></script>
-<script src="app.js?v=11"></script>
+
+<script src="app.js?v=12"></script>
 
 </body>
 </html>
