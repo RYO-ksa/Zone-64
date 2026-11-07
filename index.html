@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -13,6 +14,7 @@ header b{color:#ff4a53;letter-spacing:1px}
 nav{display:flex;gap:7px;flex-wrap:wrap}
 button{background:linear-gradient(135deg,#ff434b,#aa101e);color:white;border:1px solid #fa5056;border-radius:8px;padding:11px 16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 18px #d7192830}
 button:hover{filter:brightness(1.15)}
+button:disabled{opacity:.45;cursor:not-allowed}
 button.secondary{background:#25161c;color:#f4e8e8;border-color:#62303a;box-shadow:none}
 button.danger{background:#5a1b24;color:white}
 main{max-width:1100px;margin:auto;padding:22px}
@@ -37,7 +39,9 @@ label{font-size:14px;color:#e8d6d8;display:block;margin:10px 0}
 input,select{display:block;width:100%;background:#120d12;border:1px solid #63313a;border-radius:8px;padding:12px;color:white;margin:7px 0 0;font-size:16px}
 input:focus,select:focus{outline:2px solid #e33141}
 .team{background:#23151c;border:1px solid #4b2831;border-radius:9px;padding:12px;margin:9px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.team-actions{display:flex;gap:5px;flex-wrap:wrap}
+.team>div{min-width:0;overflow-wrap:anywhere}
+.team-actions{display:flex;gap:5px;flex-wrap:wrap;max-width:100%}
+.team-actions select{flex-basis:100%}
 .tag{color:#ff5962;font-weight:bold}
 .rounds{display:flex;gap:12px;overflow:auto;padding:12px 0}
 .round{min-width:210px;flex:1}
@@ -46,7 +50,19 @@ input:focus,select:focus{outline:2px solid #e33141}
 .match div:last-child{border:0}
 footer{text-align:center;padding:25px;color:#bca3a6}
 #adminTools>.panel{margin-top:16px}
-@media(max-width:600px){header{display:block}nav{margin-top:12px}nav button{flex:1;font-size:12px;padding:9px 7px}.team{align-items:flex-start}.hero{padding:48px 12px;background-position:center 30%}}
+.zone-accordion{border:1px solid #70404a;border-radius:12px;background:#21151b;margin:12px 0;overflow:hidden}
+.zone-accordion>summary{cursor:pointer;padding:16px;font-weight:bold;font-size:17px;line-height:1.7;overflow-wrap:anywhere;list-style:revert}
+.zone-accordion[open]>summary{border-bottom:1px solid #63313a}
+.zone-accordion-body{padding:14px}
+.zone-accordion-body>.panel{margin:0}
+.zone-editor-card{padding:14px;margin:12px 0;border:1px solid #63313a;border-radius:10px;background:#26151c}
+@media(max-width:600px){
+header{display:block}
+nav{margin-top:12px}
+nav button{flex:1;font-size:12px;padding:9px 7px}
+.team{align-items:flex-start}
+.hero{padding:48px 12px;background-position:center 30%}
+}
 </style>
 </head>
 <body>
@@ -64,6 +80,7 @@ footer{text-align:center;padding:25px;color:#bca3a6}
 </header>
 <main>
 <div id="feedback" class="notice" hidden></div>
+
 <section id="home" class="section active">
 <div class="hero">
 <div class="symbol">⛨</div>
@@ -81,8 +98,9 @@ footer{text-align:center;padding:25px;color:#bca3a6}
 <div class="stat"><strong id="mainRemaining">32</strong><small>المقاعد المتبقية — المنطقة المحظورة</small></div>
 <div class="stat"><strong id="secondRemaining">32</strong><small>المقاعد المتبقية — محاولة الدخول</small></div>
 </div>
-<div class="notice">التسجيل لا يمنح مقعدًا تلقائيًا. لكل عائلة 6 مشاركات كحد أقصى. يختار المنظم 8 عوائل لكل فعالية أسبوعية، ثم ينتقل الأول للمنطقة المحظورة والثاني لمحاولة الدخول.</div>
+<div class="notice">التسجيل لا يمنح مقعدًا تلقائيًا. عدد فرص المشاركة تحدده الإدارة لكل عائلة، والافتراضي 10 فرص. يختار المنظم 8 عوائل لكل فعالية أسبوعية، ثم ينتقل الأول للمنطقة المحظورة والثاني لمحاولة الدخول.</div>
 </section>
+
 <section id="register" class="section">
 <h1>تسجيل العوائل • قائمة الانتظار</h1>
 <div class="panel">
@@ -93,9 +111,10 @@ footer{text-align:center;padding:25px;color:#bca3a6}
 <div class="field"><label>آيدي المنسق<input name="coordinatorId" required maxlength="30" placeholder="آيدي المنسق"></label></div>
 <button id="registerButton" type="submit">إرسال طلب التسجيل</button>
 </form>
-<p class="muted">بعد ربط قاعدة البيانات، يصل تسجيلك للمنظم مباشرة. لا يمنح التسجيل مقعد تأهل تلقائيًا.</p>
+<p class="muted">يصل تسجيلك للمنظم مباشرة. لا يمنح التسجيل مقعد تأهل تلقائيًا.</p>
 </div>
 </section>
+
 <section id="families" class="section">
 <h1>العوائل المسجلة</h1>
 <div class="panel">
@@ -103,6 +122,7 @@ footer{text-align:center;padding:25px;color:#bca3a6}
 <div id="publicFamilies"></div>
 </div>
 </section>
+
 <section id="events" class="section">
 <h1>جداول الثلاثاء والأربعاء</h1>
 <div class="panel">
@@ -113,17 +133,28 @@ footer{text-align:center;padding:25px;color:#bca3a6}
 </div>
 <div id="eventList"></div>
 </section>
+
 <section id="matches" class="section">
 <h1>جدول مواجهات الفعاليات</h1>
 <div class="panel"><div id="publicMatches"></div></div>
 </section>
+
 <section id="qualify" class="section">
 <h1>مسارات التأهل</h1>
 <div class="grid">
-<div class="panel"><h2>🏆 المنطقة المحظورة</h2><p id="mainCount" class="tag"></p><div id="mainSeats"></div></div>
-<div class="panel"><h2>🛡️ محاولة الدخول إلى المنطقة المحظورة</h2><p id="secondCount" class="tag"></p><div id="secondSeats"></div></div>
+<div class="panel">
+<h2>🏆 المنطقة المحظورة</h2>
+<p id="mainCount" class="tag"></p>
+<div id="mainSeats"></div>
+</div>
+<div class="panel">
+<h2>🛡️ محاولة الدخول إلى المنطقة المحظورة</h2>
+<p id="secondCount" class="tag"></p>
+<div id="secondSeats"></div>
+</div>
 </div>
 </section>
+
 <section id="admin" class="section">
 <h1>لوحة الإدارة</h1>
 <div id="adminLogin" class="panel">
@@ -136,11 +167,13 @@ footer{text-align:center;padding:25px;color:#bca3a6}
 </div>
 <div id="adminTools" hidden>
 <button class="secondary" onclick="logout()">تسجيل الخروج</button>
+
 <div class="panel">
 <h2>فتح وإغلاق التسجيل</h2>
 <p id="registrationState"></p>
 <button onclick="toggleRegistration()">تبديل حالة التسجيل</button>
 </div>
+
 <div class="panel">
 <h2>إنشاء روم</h2>
 <form id="eventForm">
@@ -150,26 +183,43 @@ footer{text-align:center;padding:25px;color:#bca3a6}
 <button type="submit">إنشاء الروم</button>
 </form>
 </div>
-<div class="panel" style="margin-top:15px">
-<h2>قائمة انتظار العوائل وبيانات المنسقين</h2>
+
+<details class="zone-accordion" id="familiesAccordion">
+<summary>قائمة انتظار العوائل وبيانات المنسقين</summary>
+<div class="zone-accordion-body">
 <button class="secondary" onclick="addFamily()">إضافة عائلة يدويًا</button>
 <div id="requests"></div>
 </div>
-<div class="panel" style="margin-top:15px">
-<h2>القرعة العشوائية وإدارة الرومات</h2>
-<p class="muted">أنشئ رومين للتاريخ المطلوب، ثم اضغط «قرعة عشوائية» لكل روم. سيختار النظام 8 عوائل مؤهلة دون تكرار، ويمكنك مراجعة الجدول قبل نشره.</p>
+</details>
+
+<details class="zone-accordion" id="roomsAccordion">
+<summary>القرعة العشوائية وإدارة الرومات</summary>
+<div class="zone-accordion-body">
+<p class="muted">أنشئ الرومات، ثم اضغط «قرعة عشوائية» لاختيار 8 عوائل مؤهلة لكل روم. اضغط على اسم الروم لعرض أدواته.</p>
 <div id="roomControls"></div>
 </div>
-<div class="panel" style="margin-top:15px">
-<h2>إدخال نتائج الفعاليات</h2>
+</details>
+
+<details class="zone-accordion" id="editorAccordion">
+<summary>تعديل مواجهات دور الثمانية</summary>
+<div class="zone-accordion-body">
+<p class="muted">اختر طرفَي المواجهة واضغط حفظ مرة واحدة. يمنع التعديل بعد اعتماد النتائج.</p>
+<div id="matchFamilyEditor"></div>
+</div>
+</details>
+
+<details class="zone-accordion" id="resultsAccordion">
+<summary>إدخال نتائج الفعاليات</summary>
+<div class="zone-accordion-body">
 <div id="resultControls"></div>
 </div>
+</details>
 </div>
 </section>
 </main>
 <footer>المنطقة المحظورة • إدارة الفعاليات والتأهل</footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
