@@ -1,225 +1,1107 @@
-
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>المنطقة المحظورة | تسجيل العوائل</title>
+
 <style>
-:root{font-family:Tahoma,Arial,sans-serif;color:#f6eeee;background:#09090c;--red:#f02a35;--line:#68313a}
+:root{
+  font-family:Tahoma,Arial,sans-serif;
+  color:#f6eeee;
+  background:#09090c;
+  --red:#f02a35;
+  --line:#68313a
+}
+
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:linear-gradient(180deg,rgba(8,7,10,.90),rgba(12,5,8,.95)),url('assets/theme-reference.jpg') center top/cover fixed}
-header{position:sticky;top:0;z-index:5;background:rgba(14,9,12,.96);border-bottom:1px solid #66242e;padding:15px max(18px,calc((100vw - 1100px)/2));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;backdrop-filter:blur(12px)}
-header b{color:#ff4a53;letter-spacing:1px}
-nav{display:flex;gap:7px;flex-wrap:wrap}
-button{background:linear-gradient(135deg,#ff434b,#aa101e);color:white;border:1px solid #fa5056;border-radius:8px;padding:11px 16px;font-weight:bold;cursor:pointer;box-shadow:0 4px 18px #d7192830}
+
+body{
+  margin:0;
+  min-height:100vh;
+  background:
+    linear-gradient(180deg,rgba(8,7,10,.90),rgba(12,5,8,.95)),
+    url('assets/theme-reference.jpg') center top/cover fixed
+}
+
+header{
+  position:sticky;
+  top:0;
+  z-index:5;
+  background:rgba(14,9,12,.96);
+  border-bottom:1px solid #66242e;
+  padding:15px max(18px,calc((100vw - 1100px)/2));
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  backdrop-filter:blur(12px)
+}
+
+header b{
+  color:#ff4a53;
+  letter-spacing:1px
+}
+
+nav{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap
+}
+
+button{
+  background:linear-gradient(135deg,#ff434b,#aa101e);
+  color:white;
+  border:1px solid #fa5056;
+  border-radius:8px;
+  padding:11px 16px;
+  font-weight:bold;
+  cursor:pointer;
+  box-shadow:0 4px 18px #d7192830
+}
+
 button:hover{filter:brightness(1.15)}
-button:disabled{opacity:.45;cursor:not-allowed}
-button.secondary{background:#25161c;color:#f4e8e8;border-color:#62303a;box-shadow:none}
-button.danger{background:#5a1b24;color:white}
-main{max-width:1100px;margin:auto;padding:22px}
-h1{color:#ff4c56;font-size:clamp(26px,5vw,42px);margin:8px 0;text-shadow:0 0 24px #fa1d2a40}
-h2{font-size:20px;color:#f3e5e5}
-.muted,small{color:#b9a6a9}
-.hero,.panel{background:linear-gradient(145deg,rgba(33,17,23,.94),rgba(12,10,14,.96));border:1px solid #6b2a35;border-radius:13px;padding:22px;box-shadow:0 12px 36px #0008}
-.hero{text-align:center;padding:65px 18px;position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(8,7,11,.46),rgba(12,5,9,.92)),url('assets/theme-reference.jpg') center 39%/cover}
-.hero:after{content:'';position:absolute;inset:0;border:1px solid #a82836;pointer-events:none}
-.hero>*{position:relative;z-index:1}
-.hero .symbol{font-size:52px;color:#ff4c56;text-shadow:0 0 22px #f22}
-.hero h1{color:white;font-size:clamp(36px,7vw,66px);font-weight:900;text-shadow:0 3px 15px #000,0 0 28px #f22}
+
+button:disabled{
+  opacity:.45;
+  cursor:not-allowed
+}
+
+button.secondary{
+  background:#25161c;
+  color:#f4e8e8;
+  border-color:#62303a;
+  box-shadow:none
+}
+
+button.danger{
+  background:#5a1b24;
+  color:white
+}
+
+main{
+  max-width:1100px;
+  margin:auto;
+  padding:22px
+}
+
+h1{
+  color:#ff4c56;
+  font-size:clamp(26px,5vw,42px);
+  margin:8px 0;
+  text-shadow:0 0 24px #fa1d2a40
+}
+
+h2{
+  font-size:20px;
+  color:#f3e5e5
+}
+
+.muted,small{
+  color:#b9a6a9
+}
+
+.hero,.panel{
+  background:linear-gradient(
+    145deg,
+    rgba(33,17,23,.94),
+    rgba(12,10,14,.96)
+  );
+  border:1px solid #6b2a35;
+  border-radius:13px;
+  padding:22px;
+  box-shadow:0 12px 36px #0008
+}
+
+.hero{
+  text-align:center;
+  padding:65px 18px;
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(180deg,rgba(8,7,11,.46),rgba(12,5,9,.92)),
+    url('assets/theme-reference.jpg') center 39%/cover
+}
+
+.hero:after{
+  content:'';
+  position:absolute;
+  inset:0;
+  border:1px solid #a82836;
+  pointer-events:none
+}
+
+.hero>*{
+  position:relative;
+  z-index:1
+}
+
+.hero .symbol{
+  font-size:52px;
+  color:#ff4c56;
+  text-shadow:0 0 22px #f22
+}
+
+.hero h1{
+  color:white;
+  font-size:clamp(36px,7vw,66px);
+  font-weight:900;
+  text-shadow:0 3px 15px #000,0 0 28px #f22
+}
+
 .hero p{color:#fff}
-.stats,.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:18px 0}
-.stat{background:linear-gradient(150deg,#27161d,#130f14);border:1px solid #572b33;border-radius:9px;padding:19px;text-align:center}
-.stat strong{display:block;color:#ff424e;font-size:34px}
+
+.stats,.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:12px;
+  margin:18px 0
+}
+
+.stat{
+  background:linear-gradient(150deg,#27161d,#130f14);
+  border:1px solid #572b33;
+  border-radius:9px;
+  padding:19px;
+  text-align:center
+}
+
+.stat strong{
+  display:block;
+  color:#ff424e;
+  font-size:34px
+}
+
 .section{display:none}
 .section.active{display:block}
-.notice{background:#2b151c;border-right:4px solid #f02a35;padding:14px;border-radius:6px;margin:16px 0}
+
+.notice{
+  background:#2b151c;
+  border-right:4px solid #f02a35;
+  padding:14px;
+  border-radius:6px;
+  margin:16px 0
+}
+
 .field{margin:12px 0}
-label{font-size:14px;color:#e8d6d8;display:block;margin:10px 0}
-input,select{display:block;width:100%;background:#120d12;border:1px solid #63313a;border-radius:8px;padding:12px;color:white;margin:7px 0 0;font-size:16px}
-input:focus,select:focus{outline:2px solid #e33141}
-.team{background:#23151c;border:1px solid #4b2831;border-radius:9px;padding:12px;margin:9px 0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.team>div{min-width:0;overflow-wrap:anywhere}
-.team-actions{display:flex;gap:5px;flex-wrap:wrap;max-width:100%}
-.team-actions select{flex-basis:100%}
-.tag{color:#ff5962;font-weight:bold}
-.rounds{display:flex;gap:12px;overflow:auto;padding:12px 0}
-.round{min-width:210px;flex:1}
-.match{background:#26141c;border-radius:9px;margin:12px 0;padding:10px;font-size:13px}
-.match div{padding:7px;border-bottom:1px solid #54313a}
+
+label{
+  font-size:14px;
+  color:#e8d6d8;
+  display:block;
+  margin:10px 0
+}
+
+input,select{
+  display:block;
+  width:100%;
+  background:#120d12;
+  border:1px solid #63313a;
+  border-radius:8px;
+  padding:12px;
+  color:white;
+  margin:7px 0 0;
+  font-size:16px
+}
+
+input:focus,select:focus{
+  outline:2px solid #e33141
+}
+
+.team{
+  background:#23151c;
+  border:1px solid #4b2831;
+  border-radius:9px;
+  padding:12px;
+  margin:9px 0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap
+}
+
+.team>div{
+  min-width:0;
+  overflow-wrap:anywhere
+}
+
+.team-actions{
+  display:flex;
+  gap:5px;
+  flex-wrap:wrap;
+  max-width:100%
+}
+
+.team-actions select{
+  flex-basis:100%
+}
+
+.tag{
+  color:#ff5962;
+  font-weight:bold
+}
+
+.rounds{
+  display:flex;
+  gap:12px;
+  overflow:auto;
+  padding:12px 0
+}
+
+.round{
+  min-width:210px;
+  flex:1
+}
+
+.match{
+  background:#26141c;
+  border-radius:9px;
+  margin:12px 0;
+  padding:10px;
+  font-size:13px
+}
+
+.match div{
+  padding:7px;
+  border-bottom:1px solid #54313a
+}
+
 .match div:last-child{border:0}
-footer{text-align:center;padding:25px;color:#bca3a6}
-#adminTools>.panel{margin-top:16px}
-.zone-accordion{border:1px solid #70404a;border-radius:12px;background:#21151b;margin:12px 0;overflow:hidden}
-.zone-accordion>summary{cursor:pointer;padding:16px;font-weight:bold;font-size:17px;line-height:1.7;overflow-wrap:anywhere;list-style:revert}
-.zone-accordion[open]>summary{border-bottom:1px solid #63313a}
-.zone-accordion-body{padding:14px}
-.zone-accordion-body>.panel{margin:0}
-.zone-editor-card{padding:14px;margin:12px 0;border:1px solid #63313a;border-radius:10px;background:#26151c}
+
+footer{
+  text-align:center;
+  padding:25px;
+  color:#bca3a6
+}
+
+#adminTools>.panel{
+  margin-top:16px
+}
+
+.zone-accordion{
+  border:1px solid #70404a;
+  border-radius:12px;
+  background:#21151b;
+  margin:12px 0;
+  overflow:hidden
+}
+
+.zone-accordion>summary{
+  cursor:pointer;
+  padding:16px;
+  font-weight:bold;
+  font-size:17px;
+  line-height:1.7;
+  overflow-wrap:anywhere;
+  list-style:revert
+}
+
+.zone-accordion[open]>summary{
+  border-bottom:1px solid #63313a
+}
+
+.zone-accordion-body{
+  padding:14px
+}
+
+.zone-accordion-body>.panel{
+  margin:0
+}
+
+.zone-editor-card{
+  padding:14px;
+  margin:12px 0;
+  border:1px solid #63313a;
+  border-radius:10px;
+  background:#26151c
+}
+
+/* المنظمون */
+
+.organizers-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px
+}
+
+.organizer-card{
+  background:linear-gradient(145deg,#1b151e,#0f0d12);
+  border:1px solid #594255;
+  border-radius:14px;
+  padding:14px 8px;
+  text-align:center;
+  min-width:0
+}
+
+.organizer-avatar{
+  width:72px;
+  height:72px;
+  border-radius:50%;
+  object-fit:cover;
+  border:2px solid #8c607f;
+  box-shadow:0 0 18px #8c607f35
+}
+
+.organizer-name{
+  font-size:13px;
+  font-weight:800;
+  margin:8px 0 4px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis
+}
+
+.organizer-id{
+  font-size:11px;
+  color:#a995a5;
+  direction:ltr
+}
+
+.bottom-nav{
+  display:none
+}
+
+.mobile-brand{
+  display:none
+}
+
+/* الجوال */
+
 @media(max-width:600px){
-header{display:block}
-nav{margin-top:12px}
-nav button{flex:1;font-size:12px;padding:9px 7px}
-.team{align-items:flex-start}
-.hero{padding:48px 12px;background-position:center 30%}
+
+  header{
+    position:static;
+    padding:10px 12px
+  }
+
+  header nav{
+    display:none
+  }
+
+  .team{
+    align-items:flex-start
+  }
+
+  .hero{
+    padding:38px 10px;
+    background-position:center 30%
+  }
+
+  main{
+    padding:14px 10px 92px
+  }
+
+  h1{
+    font-size:25px
+  }
+
+  .panel{
+    padding:14px
+  }
+
+  .stats,.grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px
+  }
+
+  .stat{
+    padding:12px 6px
+  }
+
+  .stat strong{
+    font-size:25px
+  }
+
+  .zone-accordion>summary{
+    padding:12px;
+    font-size:14px
+  }
+
+  .zone-accordion-body{
+    padding:9px
+  }
+
+  .zone-editor-card{
+    padding:10px
+  }
+
+  .round{
+    min-width:175px
+  }
+
+  .match{
+    font-size:11px;
+    padding:7px
+  }
+
+  .bottom-nav{
+    position:fixed;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    left:8px;
+    right:8px;
+    bottom:8px;
+    z-index:50;
+    background:rgba(15,12,18,.96);
+    border:1px solid #4f3a4b;
+    border-radius:16px;
+    padding:5px;
+    box-shadow:0 12px 35px #000;
+    backdrop-filter:blur(16px)
+  }
+
+  .bottom-nav button{
+    background:transparent;
+    border:0;
+    box-shadow:none;
+    padding:7px 2px;
+    font-size:10px;
+    color:#cbbbc8;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px
+  }
+
+  .bottom-nav button span{
+    font-size:17px
+  }
+
+  .organizer-avatar{
+    width:62px;
+    height:62px
+  }
+
+  .organizer-card{
+    padding:12px 6px
+  }
+
+  .organizer-name{
+    font-size:11px
+  }
+
+  footer{
+    padding-bottom:90px
+  }
 }
 </style>
 </head>
+
 <body>
+
 <header>
-<div><b>⛨ RESTRICTED ZONE</b> <small> | المنطقة المحظورة</small></div>
-<nav>
-<button class="secondary" onclick="show('home')">الرئيسية</button>
-<button class="secondary" onclick="show('register')">تسجيل العوائل</button>
-<button class="secondary" onclick="show('families')">العوائل المسجلة</button>
-<button class="secondary" onclick="show('events')">الجداول</button>
-<button class="secondary" onclick="show('matches')">جدول المواجهات</button>
-<button class="secondary" onclick="show('qualify')">التأهل</button>
-<button class="secondary" onclick="show('admin')">لوحة الإدارة</button>
-</nav>
+  <div>
+    <b>⛨ RESTRICTED ZONE</b>
+    <small> | المنطقة المحظورة</small>
+  </div>
+
+  <nav>
+    <button class="secondary" onclick="show('home')">
+      الرئيسية
+    </button>
+
+    <button class="secondary" onclick="show('register')">
+      تسجيل العوائل
+    </button>
+
+    <button class="secondary" onclick="show('families')">
+      العوائل المسجلة
+    </button>
+
+    <button class="secondary" onclick="show('events')">
+      الجداول
+    </button>
+
+    <button class="secondary" onclick="show('matches')">
+      جدول المواجهات
+    </button>
+
+    <button class="secondary" onclick="show('qualify')">
+      التأهل
+    </button>
+
+    <button class="secondary" onclick="show('organizers')">
+      المنظمون
+    </button>
+
+    <button class="secondary" onclick="show('admin')">
+      لوحة الإدارة
+    </button>
+  </nav>
 </header>
+
 <main>
+
 <div id="feedback" class="notice" hidden></div>
 
+<!-- الرئيسية -->
+
 <section id="home" class="section active">
-<div class="hero">
-<div class="symbol">⛨</div>
-<small>فعالية جاكارو • تصريح دخول</small>
-<h1>المنطقة المحظورة</h1>
-<p class="muted">سجّل عائلتك في قائمة الانتظار، والموقع يوزّع العوائل عشوائيًا بعد إجراء القرعة من لوحة الإدارة على فعاليات الثلاثاء والأربعاء أسبوعيًا حتى تكتمل المقاعد.</p>
-<button onclick="show('register')">طلب المشاركة</button>
-</div>
-<div class="stats">
-<div class="stat"><strong id="registered">0</strong><small>عائلة مسجلة</small></div>
-<div class="stat"><strong id="eventCount">0</strong><small>فعالية منشأة</small></div>
-<div class="stat"><strong id="qualified">0</strong><small>عائلة متأهلة</small></div>
-</div>
-<div class="stats">
-<div class="stat"><strong id="mainRemaining">32</strong><small>المقاعد المتبقية — المنطقة المحظورة</small></div>
-<div class="stat"><strong id="secondRemaining">32</strong><small>المقاعد المتبقية — محاولة الدخول</small></div>
-</div>
-<div class="notice">التسجيل لا يمنح مقعدًا تلقائيًا. عدد فرص المشاركة تحدده الإدارة لكل عائلة، والافتراضي 10 فرص. يختار المنظم 8 عوائل لكل فعالية أسبوعية، ثم ينتقل الأول للمنطقة المحظورة والثاني لمحاولة الدخول.</div>
+
+  <div class="hero">
+
+    <div class="symbol">⛨</div>
+
+    <small>فعالية جاكارو • تصريح دخول</small>
+
+    <h1>المنطقة المحظورة</h1>
+
+    <p class="muted">
+      سجّل عائلتك في قائمة الانتظار، والموقع يوزّع العوائل
+      عشوائيًا بعد إجراء القرعة من لوحة الإدارة على فعاليات
+      الثلاثاء والأربعاء أسبوعيًا حتى تكتمل المقاعد.
+    </p>
+
+    <button onclick="show('register')">
+      طلب المشاركة
+    </button>
+
+  </div>
+
+  <div class="stats">
+
+    <div class="stat">
+      <strong id="registered">0</strong>
+      <small>عائلة مسجلة</small>
+    </div>
+
+    <div class="stat">
+      <strong id="eventCount">0</strong>
+      <small>فعالية منشأة</small>
+    </div>
+
+    <div class="stat">
+      <strong id="qualified">0</strong>
+      <small>عائلة متأهلة</small>
+    </div>
+
+  </div>
+
+  <div class="stats">
+
+    <div class="stat">
+      <strong id="mainRemaining">32</strong>
+      <small>
+        المقاعد المتبقية — المنطقة المحظورة
+      </small>
+    </div>
+
+    <div class="stat">
+      <strong id="secondRemaining">32</strong>
+      <small>
+        المقاعد المتبقية — محاولة الدخول
+      </small>
+    </div>
+
+  </div>
+
+  <div class="notice">
+    التسجيل لا يمنح مقعدًا تلقائيًا.
+    عدد فرص المشاركة تحدده الإدارة لكل عائلة،
+    والافتراضي 10 فرص.
+    يختار المنظم 8 عوائل لكل فعالية أسبوعية،
+    ثم ينتقل الأول للمنطقة المحظورة
+    والثاني لمحاولة الدخول.
+  </div>
+
 </section>
+
+<!-- التسجيل -->
 
 <section id="register" class="section">
+
 <h1>تسجيل العوائل • قائمة الانتظار</h1>
+
 <div class="panel">
+
 <form id="registration">
-<div class="field"><label>اسم العائلة<input name="family" required maxlength="60" placeholder="اسم العائلة"></label></div>
-<div class="field"><label>آيدي العائلة<input name="familyId" required maxlength="30" placeholder="آيدي العائلة"></label></div>
-<div class="field"><label>اسم المنسق<input name="coordinator" required maxlength="60" placeholder="اسم المنسق"></label></div>
-<div class="field"><label>آيدي المنسق<input name="coordinatorId" required maxlength="30" placeholder="آيدي المنسق"></label></div>
-<button id="registerButton" type="submit">إرسال طلب التسجيل</button>
+
+<div class="field">
+<label>
+اسم العائلة
+<input
+  name="family"
+  required
+  maxlength="60"
+  placeholder="اسم العائلة"
+>
+</label>
+</div>
+
+<div class="field">
+<label>
+آيدي العائلة
+<input
+  name="familyId"
+  required
+  maxlength="30"
+  placeholder="آيدي العائلة"
+>
+</label>
+</div>
+
+<div class="field">
+<label>
+اسم المنسق
+<input
+  name="coordinator"
+  required
+  maxlength="60"
+  placeholder="اسم المنسق"
+>
+</label>
+</div>
+
+<div class="field">
+<label>
+آيدي المنسق
+<input
+  name="coordinatorId"
+  required
+  maxlength="30"
+  placeholder="آيدي المنسق"
+>
+</label>
+</div>
+
+<button id="registerButton" type="submit">
+إرسال طلب التسجيل
+</button>
+
 </form>
-<p class="muted">يصل تسجيلك للمنظم مباشرة. لا يمنح التسجيل مقعد تأهل تلقائيًا.</p>
+
+<p class="muted">
+يصل تسجيلك للمنظم مباشرة.
+لا يمنح التسجيل مقعد تأهل تلقائيًا.
+</p>
+
 </div>
 </section>
+
+<!-- العوائل -->
 
 <section id="families" class="section">
+
 <h1>العوائل المسجلة</h1>
+
 <div class="panel">
-<p class="muted">أسماء العوائل فقط، ولا تظهر الآيديات للزوار.</p>
+
+<p class="muted">
+أسماء العوائل فقط، ولا تظهر الآيديات للزوار.
+</p>
+
 <div id="publicFamilies"></div>
+
 </div>
 </section>
+
+<!-- الجداول -->
 
 <section id="events" class="section">
+
 <h1>جداول الثلاثاء والأربعاء</h1>
+
 <div class="panel">
+
 <h2>خطة الرومات المعتمدة</h2>
-<p>من 20 أكتوبر إلى 25 نوفمبر: رومين الثلاثاء ورومين الأربعاء أسبوعيًا، مع روم تعويضي إضافي في يوم يحدده المنظم.</p>
-<p>الثلاثاء 1 ديسمبر: <b>4 رومات</b> • الأربعاء 2 ديسمبر: <b>3 رومات</b>.</p>
-<p class="muted">الإجمالي المخطط: 32 رومًا، ويتأهل من كل روم فائز ووصيف. لا يظهر توزيع العوائل إلا بعد نشر الروم من لوحة الإدارة.</p>
+
+<p>
+من 20 أكتوبر إلى 25 نوفمبر:
+رومين الثلاثاء ورومين الأربعاء أسبوعيًا،
+مع روم تعويضي إضافي في يوم يحدده المنظم.
+</p>
+
+<p>
+الثلاثاء 1 ديسمبر:
+<b>4 رومات</b>
+•
+الأربعاء 2 ديسمبر:
+<b>3 رومات</b>.
+</p>
+
+<p class="muted">
+الإجمالي المخطط: 32 رومًا،
+ويتأهل من كل روم فائز ووصيف.
+لا يظهر توزيع العوائل إلا بعد نشر الروم
+من لوحة الإدارة.
+</p>
+
 </div>
+
 <div id="eventList"></div>
+
 </section>
+
+<!-- المواجهات -->
 
 <section id="matches" class="section">
+
 <h1>جدول مواجهات الفعاليات</h1>
-<div class="panel"><div id="publicMatches"></div></div>
+
+<div class="panel">
+  <div id="publicMatches"></div>
+</div>
+
 </section>
+
+<!-- التأهل -->
 
 <section id="qualify" class="section">
+
 <h1>مسارات التأهل</h1>
+
 <div class="grid">
+
 <div class="panel">
+
 <h2>🏆 المنطقة المحظورة</h2>
+
 <p id="mainCount" class="tag"></p>
+
 <div id="mainSeats"></div>
+
 </div>
+
 <div class="panel">
+
 <h2>🛡️ محاولة الدخول إلى المنطقة المحظورة</h2>
+
 <p id="secondCount" class="tag"></p>
+
 <div id="secondSeats"></div>
+
 </div>
+
 </div>
+
 </section>
+
+<!-- المنظمون -->
+
+<section id="organizers" class="section">
+
+<h1>المنظمون</h1>
+
+<div class="panel">
+
+<p class="muted">
+فريق تنظيم المنطقة المحظورة
+</p>
+
+<div class="organizers-grid">
+
+<div class="organizer-card">
+
+<img
+  class="organizer-avatar"
+  src="IMG_2147.jpeg"
+  alt="RYO"
+>
+
+<div class="organizer-name">
+ʀ ʏ ᴏ ⌁ | ⭐️
+</div>
+
+<div class="organizer-id">
+136441913
+</div>
+
+</div>
+
+<div class="organizer-card">
+
+<img
+  class="organizer-avatar"
+  src="IMG_2270.jpeg"
+  alt="RABAAB"
+>
+
+<div class="organizer-name">
+ᴿᴬᴮᴬᴬᴮ ཐི༏ཋྀ
+</div>
+
+<div class="organizer-id">
+148967171
+</div>
+
+</div>
+
+<div class="organizer-card">
+
+<img
+  class="organizer-avatar"
+  src="IMG_2271.jpeg"
+  alt="ESMAEL"
+>
+
+<div class="organizer-name">
+𝙴𝚂𝙼𝙰𝙴𝙻⁹⁶ ཐི༏ཋྀ
+</div>
+
+<div class="organizer-id">
+143653610
+</div>
+
+</div>
+
+<div class="organizer-card">
+
+<img
+  class="organizer-avatar"
+  src="IMG_2272.jpeg"
+  alt="507"
+>
+
+<div class="organizer-name">
+507 |⭐️
+</div>
+
+<div class="organizer-id">
+106669571
+</div>
+
+</div>
+
+</div>
+</div>
+
+</section>
+
+<!-- الإدارة -->
 
 <section id="admin" class="section">
+
 <h1>لوحة الإدارة</h1>
+
 <div id="adminLogin" class="panel">
+
 <h2>دخول المنظم</h2>
+
 <form id="loginForm">
-<label>البريد الإلكتروني<input type="email" name="email" required autocomplete="username"></label>
-<label>كلمة المرور<input type="password" name="password" required autocomplete="current-password"></label>
-<button type="submit">دخول</button>
+
+<label>
+البريد الإلكتروني
+<input
+  type="email"
+  name="email"
+  required
+  autocomplete="username"
+>
+</label>
+
+<label>
+كلمة المرور
+<input
+  type="password"
+  name="password"
+  required
+  autocomplete="current-password"
+>
+</label>
+
+<button type="submit">
+دخول
+</button>
+
 </form>
+
 </div>
+
 <div id="adminTools" hidden>
-<button class="secondary" onclick="logout()">تسجيل الخروج</button>
+
+<button
+  class="secondary"
+  onclick="logout()"
+>
+تسجيل الخروج
+</button>
 
 <div class="panel">
+
 <h2>فتح وإغلاق التسجيل</h2>
+
 <p id="registrationState"></p>
-<button onclick="toggleRegistration()">تبديل حالة التسجيل</button>
+
+<button onclick="toggleRegistration()">
+تبديل حالة التسجيل
+</button>
+
 </div>
 
 <div class="panel">
+
 <h2>إنشاء روم</h2>
+
 <form id="eventForm">
-<label>اسم الفعالية<input name="name" required placeholder="مثال: فعالية الثلاثاء"></label>
-<label>تاريخ الروم<input name="date" type="date" required></label>
-<label>وقت الروم<input name="time" type="time" required value="21:00"></label>
-<button type="submit">إنشاء الروم</button>
+
+<label>
+اسم الفعالية
+<input
+  name="name"
+  required
+  placeholder="مثال: فعالية الثلاثاء"
+>
+</label>
+
+<label>
+تاريخ الروم
+<input
+  name="date"
+  type="date"
+  required
+>
+</label>
+
+<label>
+وقت الروم
+<input
+  name="time"
+  type="time"
+  required
+  value="21:00"
+>
+</label>
+
+<button type="submit">
+إنشاء الروم
+</button>
+
 </form>
+
 </div>
 
-<details class="zone-accordion" id="familiesAccordion">
-<summary>قائمة انتظار العوائل وبيانات المنسقين</summary>
+<details
+  class="zone-accordion"
+  id="familiesAccordion"
+>
+
+<summary>
+قائمة انتظار العوائل وبيانات المنسقين
+</summary>
+
 <div class="zone-accordion-body">
-<button class="secondary" onclick="addFamily()">إضافة عائلة يدويًا</button>
+
+<button
+  class="secondary"
+  onclick="addFamily()"
+>
+إضافة عائلة يدويًا
+</button>
+
 <div id="requests"></div>
+
 </div>
 </details>
 
-<details class="zone-accordion" id="roomsAccordion">
-<summary>القرعة العشوائية وإدارة الرومات</summary>
+<details
+  class="zone-accordion"
+  id="roomsAccordion"
+>
+
+<summary>
+القرعة العشوائية وإدارة الرومات
+</summary>
+
 <div class="zone-accordion-body">
-<p class="muted">أنشئ الرومات، ثم اضغط «قرعة عشوائية» لاختيار 8 عوائل مؤهلة لكل روم. اضغط على اسم الروم لعرض أدواته.</p>
+
+<p class="muted">
+أنشئ الرومات، ثم اضغط «قرعة عشوائية»
+لاختيار 8 عوائل مؤهلة لكل روم.
+اضغط على اسم الروم لعرض أدواته.
+</p>
+
 <div id="roomControls"></div>
+
 </div>
 </details>
 
-<details class="zone-accordion" id="editorAccordion">
-<summary>تعديل مواجهات دور الثمانية</summary>
+<details
+  class="zone-accordion"
+  id="editorAccordion"
+>
+
+<summary>
+تعديل مواجهات دور الثمانية
+</summary>
+
 <div class="zone-accordion-body">
-<p class="muted">اختر طرفَي المواجهة واضغط حفظ مرة واحدة. يمنع التعديل بعد اعتماد النتائج.</p>
+
+<p class="muted">
+اختر طرفَي المواجهة واضغط حفظ مرة واحدة.
+يمنع التعديل بعد اعتماد النتائج.
+</p>
+
 <div id="matchFamilyEditor"></div>
+
 </div>
 </details>
 
-<details class="zone-accordion" id="resultsAccordion">
-<summary>إدخال نتائج الفعاليات</summary>
+<details
+  class="zone-accordion"
+  id="resultsAccordion"
+>
+
+<summary>
+إدخال نتائج الفعاليات
+</summary>
+
 <div class="zone-accordion-body">
+
 <div id="resultControls"></div>
+
 </div>
 </details>
+
 </div>
 </section>
+
 </main>
-<footer>المنطقة المحظورة • إدارة الفعاليات والتأهل</footer>
+
+<!-- الشريط السفلي للجوال -->
+
+<nav
+  class="bottom-nav"
+  aria-label="التنقل السريع"
+>
+
+<button onclick="show('home')">
+<span>⌂</span>
+الرئيسية
+</button>
+
+<button onclick="show('matches')">
+<span>♜</span>
+المواجهات
+</button>
+
+<button onclick="show('organizers')">
+<span>♟</span>
+المنظمون
+</button>
+
+<button onclick="show('qualify')">
+<span>★</span>
+التأهل
+</button>
+
+<button onclick="show('admin')">
+<span>⚙</span>
+الإدارة
+</button>
+
+</nav>
+
+<footer>
+المنطقة المحظورة • إدارة الفعاليات والتأهل
+</footer>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
 <script src="config.js"></script>
-<script src="app.js?v=9"></script>
+
+<script src="app.js?v=10"></script>
+
 </body>
 </html>
