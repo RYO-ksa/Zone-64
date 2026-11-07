@@ -1,4 +1,6 @@
 
+'use strict';
+
 const cfg = window.ZONE_CONFIG || {};
 const configured =
   /^https:\/\//.test(cfg.SUPABASE_URL || '') &&
@@ -34,9 +36,53 @@ const esc = value =>
     "'": '&#39;'
   }[c]));
 
+const activeFamilies = () =>
+  families.filter(f => f.is_active !== false);
+
+const familyName = id =>
+  !id
+    ? 'مكان شاغر'
+    : families.find(f => f.id === id)?.family ||
+      'عائلة غير معروفة';
+
+const familyLimit = f =>
+  Number.isSafeInteger(Number(f?.max_participations)) &&
+  Number(f?.max_participations) >= 0
+    ? Number(f.max_participations)
+    : 10;
+
+const eventAssignments = id =>
+  assignments.filter(a => a.event_id === id);
+
+const eventMatches = id =>
+  roomMatches
+    .filter(m => m.event_id === id)
+    .sort((a, b) =>
+      a.round_number - b.round_number ||
+      a.match_number - b.match_number
+    );
+
+const isQualified = id =>
+  results.some(r =>
+    r.first_family_id === id ||
+    r.second_family_id === id
+  );
+
+const dateStr = date =>
+  date
+    ? new Date(date + 'T12:00:00')
+        .toLocaleDateString('ar-SA', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        })
+    : '';
+
 function notify(message) {
   const el = $('feedback');
   if (!el) return;
+
   el.textContent = message;
   el.hidden = false;
   window.scrollTo(0, 0);
@@ -46,60 +92,26 @@ function show(id) {
   document.querySelectorAll('.section').forEach(el => {
     el.classList.toggle('active', el.id === id);
   });
+
   window.scrollTo(0, 0);
 }
 
-function dateStr(date) {
-  if (!date) return '';
-  return new Date(date + 'T12:00:00')
-    .toLocaleDateString('ar-SA', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
-}
-
-function familyName(id) {
-  return families.find(f => f.id === id)?.family ||
-    'عائلة غير معروفة';
-}
-
-function eventAssignments(eventId) {
-  return assignments.filter(a => a.event_id === eventId);
-}
-
-function eventMatches(eventId) {
-  return roomMatches
-    .filter(m => m.event_id === eventId)
-    .sort((a, b) =>
-      a.round_number - b.round_number ||
-      a.match_number - b.match_number
-    );
-}
-
-function isQualified(familyId) {
-  return results.some(r =>
-    r.first_family_id === familyId ||
-    r.second_family_id === familyId
-  );
-}
+/* تحميل البيانات */
 
 async function fetchAll() {
   if (!db) {
-    notify('تحقق من إعدادات Supabase في config.js');
-    return;
+    return notify('تحقق من إعدادات Supabase في config.js');
   }
 
   try {
-    const { data: sessionData, error: sessionError } =
+    const { data: session, error: authError } =
       await db.auth.getSession();
 
-    if (sessionError) throw sessionError;
+    if (authError) throw authError;
 
     admin = false;
 
-    if (sessionData.session) {
+    if (session.session) {
       const check = await db.rpc('is_zone_admin');
       admin = !check.error && check.data === true;
     }
@@ -180,7 +192,7 @@ async function fetchAll() {
   }
 }
 
-/* التسجيل */
+/* تسجيل العوائل */
 
 $('registration').addEventListener('submit', async event => {
   event.preventDefault();
@@ -218,12 +230,14 @@ $('registration').addEventListener('submit', async event => {
   notify('تم تسجيل العائلة في قائمة الانتظار بنجاح');
 });
 
-/* تسجيل دخول الإدارة */
+/* تسجيل الدخول */
 
 $('loginForm').addEventListener('submit', async event => {
   event.preventDefault();
 
-  if (!db) return notify('الاتصال بقاعدة البيانات غير متاح');
+  if (!db) {
+    return notify('الاتصال بقاعدة البيانات غير متاح');
+  }
 
   const form = new FormData(event.target);
 
@@ -232,7 +246,9 @@ $('loginForm').addEventListener('submit', async event => {
     password: String(form.get('password'))
   });
 
-  if (error) return notify('تعذر الدخول: ' + error.message);
+  if (error) {
+    return notify('تعذر الدخول: ' + error.message);
+  }
 
   await fetchAll();
 
@@ -243,6 +259,7 @@ $('loginForm').addEventListener('submit', async event => {
 
 async function logout() {
   if (!db) return;
+
   await db.auth.signOut();
   await fetchAll();
 }
@@ -273,16 +290,21 @@ $('eventForm').addEventListener('submit', async event => {
   event.target.reset();
   await fetchAll();
   notify('تم إنشاء الروم بنجاح');
-});
+}
 
-/* توزيع العوائل */
+/* توزيع عائلة */
 
 async function assign(familyId, eventId) {
   if (!admin || !eventId) return;
 
-  const ev = events.find(e => e.id === eventId);
+  const family = families.find(f => f.id === familyId);
+  const room = events.find(e => e.id === eventId);
 
-  if (!ev || ev.published) {
+  if (!family || family.is_active === false) {
+    return notify('العائلة غير نشطة');
+  }
+
+  if (!room || room.published) {
     return notify('يجب أن يكون الروم مخفيًا');
   }
 
@@ -290,10 +312,12 @@ async function assign(familyId, eventId) {
     return notify('تم إنشاء مواجهات هذا الروم');
   }
 
-  const used = assignments.filter(a => a.family_id === familyId);
+  const used = assignments.filter(a =>
+    a.family_id === familyId
+  );
 
-  if (used.length >= 6) {
-    return notify('استنفدت العائلة مشاركاتها الست');
+  if (used.length >= familyLimit(family)) {
+    return notify('العائلة استنفدت فرص مشاركتها');
   }
 
   if (isQualified(familyId)) {
@@ -313,19 +337,22 @@ async function assign(familyId, eventId) {
     event_id: eventId
   });
 
-  if (error) return notify(error.message);
+  if (error) {
+    return notify('تعذر التوزيع: ' + error.message);
+  }
 
   await fetchAll();
+  notify('تم توزيع العائلة');
 }
 
-/* القرعة العشوائية */
+/* القرعة */
 
 async function randomDraw(eventId) {
   if (!admin) return;
 
-  const ev = events.find(e => e.id === eventId);
+  const room = events.find(e => e.id === eventId);
 
-  if (!ev || ev.published) {
+  if (!room || room.published) {
     return notify('يجب إخفاء الروم قبل إجراء القرعة');
   }
 
@@ -336,13 +363,14 @@ async function randomDraw(eventId) {
     return notify('الروم يحتوي على توزيع أو مواجهات مسبقة');
   }
 
-  if (!confirm('إجراء قرعة عشوائية لاختيار 8 عوائل وإنشاء المواجهات؟')) {
-    return;
-  }
+  if (!confirm(
+    'إجراء قرعة عشوائية لاختيار 8 عوائل وإنشاء المواجهات؟'
+  )) return;
 
-  const { data, error } = await db.rpc('zone_random_draw', {
-    p_event_id: eventId
-  });
+  const { data, error } = await db.rpc(
+    'zone_random_draw',
+    { p_event_id: eventId }
+  );
 
   if (error) {
     return notify('تعذرت القرعة: ' + error.message);
@@ -352,19 +380,19 @@ async function randomDraw(eventId) {
   notify('نجحت القرعة واختيرت ' + data + ' عوائل');
 }
 
-/* إزالة عائلة من روم قبل إنشاء المواجهات */
+/* إزالة من الروم */
 
 async function unassign(familyId, eventId) {
   if (!admin) return;
 
-  const ev = events.find(e => e.id === eventId);
+  const room = events.find(e => e.id === eventId);
 
-  if (ev?.published) {
+  if (room?.published) {
     return notify('أخفِ الروم قبل تعديل توزيعه');
   }
 
   if (eventMatches(eventId).length) {
-    return notify('استخدم أداة استبدال العوائل لتعديل الجدول');
+    return notify('استخدم تعديل مواجهات دور الثمانية');
   }
 
   if (results.some(r => r.event_id === eventId)) {
@@ -381,7 +409,7 @@ async function unassign(familyId, eventId) {
   await fetchAll();
 }
 
-/* نشر وإخفاء الرومات */
+/* نشر الروم */
 
 async function publishRoom(id, published) {
   if (!admin) return;
@@ -392,6 +420,15 @@ async function publishRoom(id, published) {
 
   if (published && eventMatches(id).length !== 7) {
     return notify('يجب إنشاء جدول المواجهات قبل نشر الروم');
+  }
+
+  if (
+    published &&
+    eventMatches(id)
+      .filter(m => m.round_number === 1)
+      .some(m => !m.first_family_id || !m.second_family_id)
+  ) {
+    return notify('هناك مكان شاغر في دور الثمانية');
   }
 
   const { error } = await db.from('events')
@@ -418,21 +455,33 @@ async function setMatchWinner(matchId, winnerId) {
     return notify('لم يكتمل طرفا المواجهة');
   }
 
+  if (![
+    match.first_family_id,
+    match.second_family_id
+  ].includes(winnerId)) {
+    return notify('الفائز ليس أحد طرفَي المواجهة');
+  }
+
   if (
     match.winner_family_id &&
     match.winner_family_id !== winnerId
   ) {
-    return notify('تم اعتماد فائز سابقًا ولا يمكن تغييره مباشرة');
+    return notify(
+      'تم اعتماد فائز سابقًا ولا يمكن تغييره مباشرة'
+    );
   }
 
-  if (!confirm('اعتماد فوز ' + familyName(winnerId) + '؟')) {
-    return;
-  }
+  if (!confirm(
+    'اعتماد فوز ' + familyName(winnerId) + '؟'
+  )) return;
 
-  const { error } = await db.rpc('zone_set_match_winner', {
-    p_match_id: matchId,
-    p_winner_id: winnerId
-  });
+  const { error } = await db.rpc(
+    'zone_set_match_winner',
+    {
+      p_match_id: matchId,
+      p_winner_id: winnerId
+    }
+  );
 
   if (error) {
     return notify('تعذر اعتماد الفائز: ' + error.message);
@@ -447,29 +496,33 @@ async function setMatchWinner(matchId, winnerId) {
   );
 }
 
-/* اعتماد مقاعد التأهل */
+/* اعتماد التأهل */
 
 async function saveResult(eventId) {
   if (!admin) return;
 
   const final = eventMatches(eventId).find(m =>
-    m.round_number === 3 && m.match_number === 1
+    m.round_number === 3 &&
+    m.match_number === 1
   );
 
-  if (!final) return notify('لا يوجد جدول نهائي لهذا الروم');
+  if (!final) {
+    return notify('لا يوجد جدول نهائي لهذا الروم');
+  }
 
   if (!final.winner_family_id) {
     return notify('اعتمد الفائز في النهائي أولًا');
   }
 
   const first = final.winner_family_id;
-
   const second =
     first === final.first_family_id
       ? final.second_family_id
       : final.first_family_id;
 
-  if (!second) return notify('لا يمكن تحديد الوصيف');
+  if (!second) {
+    return notify('لا يمكن تحديد الوصيف');
+  }
 
   const existing = results.find(r => r.event_id === eventId);
 
@@ -477,17 +530,12 @@ async function saveResult(eventId) {
     return notify('اكتملت مقاعد البطولة');
   }
 
-  if (
-    results.some(r =>
-      r.event_id !== eventId &&
-      (
-        r.first_family_id === first ||
-        r.second_family_id === first ||
-        r.first_family_id === second ||
-        r.second_family_id === second
-      )
+  if (results.some(r =>
+    r.event_id !== eventId &&
+    [r.first_family_id, r.second_family_id].some(id =>
+      id === first || id === second
     )
-  ) {
+  )) {
     return notify('إحدى العائلتين حصلت على مقعد تأهل سابقًا');
   }
 
@@ -495,9 +543,7 @@ async function saveResult(eventId) {
     'اعتماد النتيجة النهائية؟\n' +
     'الفائز: ' + familyName(first) + '\n' +
     'الوصيف: ' + familyName(second)
-  )) {
-    return;
-  }
+  )) return;
 
   const { error } = await db.from('results').upsert({
     event_id: eventId,
@@ -513,13 +559,15 @@ async function saveResult(eventId) {
   notify('تم اعتماد الفائز والوصيف وإضافة مقاعد التأهل');
 }
 
-/* فتح وإغلاق التسجيل */
+/* التسجيل */
 
 async function toggleRegistration() {
   if (!admin) return;
 
   const { error } = await db.from('zone_settings')
-    .update({ registration_open: !registrationOpen })
+    .update({
+      registration_open: !registrationOpen
+    })
     .eq('id', true);
 
   if (error) return notify(error.message);
@@ -561,19 +609,31 @@ async function addFamily() {
 async function editFamily(id) {
   if (!admin) return;
 
-  const f = families.find(x => x.id === id);
-  if (!f) return;
+  const familyRow = families.find(f => f.id === id);
+  if (!familyRow) return;
 
-  const family = prompt('اسم العائلة', f.family);
+  const family = prompt(
+    'اسم العائلة',
+    familyRow.family
+  );
   if (family === null) return;
 
-  const family_id = prompt('آيدي العائلة', f.family_id);
+  const family_id = prompt(
+    'آيدي العائلة',
+    familyRow.family_id
+  );
   if (family_id === null) return;
 
-  const coordinator = prompt('اسم المنسق', f.coordinator || '');
+  const coordinator = prompt(
+    'اسم المنسق',
+    familyRow.coordinator || ''
+  );
   if (coordinator === null) return;
 
-  const coordinator_id = prompt('آيدي المنسق', f.coordinator_id || '');
+  const coordinator_id = prompt(
+    'آيدي المنسق',
+    familyRow.coordinator_id || ''
+  );
   if (coordinator_id === null) return;
 
   if (![family, family_id, coordinator, coordinator_id]
@@ -593,49 +653,105 @@ async function editFamily(id) {
   await fetchAll();
 }
 
-/* حذف عائلة من التسجيل */
+/* تعديل فرص العائلة */
 
-async function deleteFamily(id) {
-  if (!admin) return notify('ليس لديك صلاحية الإدارة');
+async function zoneSetLimit(id) {
+  if (!admin) return;
 
   const family = families.find(f => f.id === id);
-  if (!family) return notify('العائلة غير موجودة');
 
-  if (!confirm(
-    'هل تريد حذف عائلة "' + family.family +
-    '" من التسجيل نهائيًا؟'
-  )) return;
+  if (!family) {
+    return notify('العائلة غير موجودة');
+  }
 
-  const { error } = await db.rpc('zone_admin_delete_family', {
-    p_family_id: id
-  });
+  const raw = prompt(
+    'كم عدد فرص المشاركة لعائلة ' + family.family + '؟',
+    String(familyLimit(family))
+  );
+
+  if (raw === null) return;
+
+  const value = Number(raw.trim());
+
+  if (
+    !raw.trim() ||
+    !Number.isSafeInteger(value) ||
+    value < 0
+  ) {
+    return notify('اكتب عددًا صحيحًا من صفر فأعلى');
+  }
+
+  const { error } = await db.rpc(
+    'zone_admin_set_family_limit',
+    {
+      p_family_id: id,
+      p_limit: value
+    }
+  );
 
   if (error) {
-    return notify('تعذر حذف العائلة: ' + error.message);
+    return notify('تعذر تغيير الفرص: ' + error.message);
   }
 
   await fetchAll();
-  notify('تم حذف العائلة من التسجيل بنجاح');
+
+  notify(
+    'تم تحديد ' + value +
+    ' فرصة لعائلة ' + family.family
+  );
 }
 
-/* تعديل بيانات الروم */
+/* سحب العائلة */
+
+async function deleteFamily(id) {
+  if (!admin) return;
+
+  const family = families.find(f => f.id === id);
+
+  if (!family) {
+    return notify('العائلة غير موجودة');
+  }
+
+  if (!confirm(
+    'سحب عائلة «' + family.family +
+    '» نهائيًا من التسجيل والقرعات القادمة؟\n' +
+    'ستبقى النتائج السابقة محفوظة.'
+  )) return;
+
+  const { error } = await db.rpc(
+    'zone_admin_withdraw_family',
+    { p_family_id: id }
+  );
+
+  if (error) {
+    return notify('تعذر سحب العائلة: ' + error.message);
+  }
+
+  await fetchAll();
+  notify('تم سحب العائلة من التسجيل والقرعات القادمة');
+}
+
+/* تعديل الروم */
 
 async function editRoom(id) {
   if (!admin) return;
 
-  const ev = events.find(e => e.id === id);
-  if (!ev) return;
+  const room = events.find(e => e.id === id);
+  if (!room) return;
 
-  const name = prompt('اسم الروم', ev.name);
+  const name = prompt('اسم الروم', room.name);
   if (name === null) return;
 
   const time = prompt(
     'الوقت HH:MM',
-    String(ev.event_time).slice(0, 5)
+    String(room.event_time).slice(0, 5)
   );
   if (time === null) return;
 
-  if (!name.trim() || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+  if (
+    !name.trim() ||
+    !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)
+  ) {
     return notify('تحقق من الاسم وصيغة الوقت');
   }
 
@@ -649,96 +765,115 @@ async function editRoom(id) {
   await fetchAll();
 }
 
-/* حذف الروم مع مواجهاته وتوزيعه */
+/* حذف الروم */
 
 async function deleteRoom(id) {
-  if (!admin) return notify('ليس لديك صلاحية الإدارة');
+  if (!admin) return;
 
-  const ev = events.find(e => e.id === id);
-  if (!ev) return notify('الروم غير موجود');
+  const room = events.find(e => e.id === id);
+
+  if (!room) return notify('الروم غير موجود');
 
   if (results.some(r => r.event_id === id)) {
-    return notify(
-      'لا يمكن حذف روم لديه مقاعد تأهل معتمدة'
-    );
+    return notify('لا يمكن حذف روم لديه مقاعد تأهل معتمدة');
   }
 
-  const hasMatches = eventMatches(id).length > 0;
-  const hasAssignments = eventAssignments(id).length > 0;
-
-  const warning = (hasMatches || hasAssignments)
-    ? 'سيتم حذف جميع مواجهات الروم وتوزيع العوائل المرتبط به.\n'
-    : '';
-
   if (!confirm(
-    'هل تريد حذف الروم "' + ev.name + '" نهائيًا؟\n' +
-    warning
+    'هل تريد حذف الروم «' + room.name +
+    '» نهائيًا؟\n' +
+    'سيتم حذف جميع مواجهاته وتوزيعاته.'
   )) return;
 
-  const { error } = await db.rpc('zone_admin_delete_room', {
-    p_event_id: id
-  });
+  const { error } = await db.rpc(
+    'zone_admin_delete_room',
+    { p_event_id: id }
+  );
 
   if (error) {
     return notify('تعذر حذف الروم: ' + error.message);
   }
 
   await fetchAll();
-  notify('تم حذف الروم ومواجهاته وتوزيعه بنجاح');
+  notify('تم حذف الروم ومواجهاته وتوزيعه');
 }
 
-/* استبدال عائلة داخل جدول المواجهات */
+/* تعديل طرفَي المواجهة */
 
-async function replaceMatchFamily(matchId, slot, replacementId) {
-  if (!admin) return notify('ليس لديك صلاحية الإدارة');
+async function zoneSaveTeams(matchId, firstId, secondId) {
+  if (!admin) return;
 
-  if (!replacementId) {
-    return notify('اختر العائلة البديلة');
+  if (!firstId || !secondId || firstId === secondId) {
+    return notify('اختر عائلتين مختلفتين');
   }
 
   const match = roomMatches.find(m => m.id === matchId);
+
   if (!match) return notify('المواجهة غير موجودة');
 
-  const oldId =
-    slot === 'first'
-      ? match.first_family_id
-      : match.second_family_id;
-
   if (!confirm(
-    'هل تريد استبدال "' + familyName(oldId) +
-    '" بعائلة "' + familyName(replacementId) + '"؟'
+    'حفظ طرفَي المواجهة؟\n' +
+    familyName(firstId) + '\nضد\n' +
+    familyName(secondId)
   )) return;
 
-  const { error } = await db.rpc('zone_admin_manage', {
-    p_action: 'replace_family',
-    p_match_id: matchId,
-    p_replacement_id: replacementId,
-    p_slot: slot
-  });
+  const { error } = await db.rpc(
+    'zone_admin_edit_match',
+    {
+      p_match_id: matchId,
+      p_first_id: firstId,
+      p_second_id: secondId
+    }
+  );
 
   if (error) {
-    return notify('تعذر تعديل الجدول: ' + error.message);
+    return notify('تعذر تعديل المواجهة: ' + error.message);
   }
 
   await fetchAll();
-  notify('تم استبدال العائلة وتحديث الجدول بنجاح');
+  notify('تم حفظ العائلتين وتحديث المواجهة');
 }
 
-/* عرض بيانات الموقع */
+/* فتح وإغلاق الرومات */
+
+function preserveDetails() {
+  const map = new Map();
+
+  document.querySelectorAll(
+    'details[data-room-key]'
+  ).forEach(details => {
+    map.set(details.dataset.roomKey, details.open);
+  });
+
+  return map;
+}
+
+function detailsHTML(key, title, body, state) {
+  return (
+    '<details class="zone-accordion" data-room-key="' +
+    esc(key) + '"' +
+    (state.get(key) ? ' open' : '') +
+    '><summary>' + esc(title) + '</summary>' +
+    '<div class="zone-accordion-body">' +
+    body +
+    '</div></details>'
+  );
+}
+
+/* عرض الموقع */
 
 function render() {
   $('registered').textContent = publicNames.length;
 
-  const publicEventIds = new Set([
+  const publicIds = new Set([
     ...rosters.map(r => r.event_id),
     ...publicMatches.map(m => m.event_id)
   ]);
 
   $('eventCount').textContent =
-    admin ? events.length : publicEventIds.size;
+    admin ? events.length : publicIds.size;
 
-  const first = scoreboard.filter(x => x.first_family);
-  const second = scoreboard.filter(x => x.second_family);
+  const first = scoreboard.filter(r => r.first_family);
+  const second = scoreboard.filter(r => r.second_family);
 
   const firstCount = admin ? results.length : first.length;
   const secondCount = admin ? results.length : second.length;
@@ -747,13 +882,17 @@ function render() {
   $('mainCount').textContent = firstCount + '/32 مقعد';
   $('secondCount').textContent = secondCount + '/32 مقعد';
 
-  $('mainRemaining').textContent = Math.max(0, 32 - firstCount);
-  $('secondRemaining').textContent = Math.max(0, 32 - secondCount);
+  $('mainRemaining').textContent =
+    Math.max(0, 32 - firstCount);
+
+  $('secondRemaining').textContent =
+    Math.max(0, 32 - secondCount);
 
   $('mainSeats').innerHTML =
     first.map((r, i) =>
       '<div class="team">' +
-      (i + 1) + '. ' + esc(r.first_family) +
+      (i + 1) + '. ' +
+      esc(r.first_family) +
       '</div>'
     ).join('') ||
     '<p class="muted">لم تُنشر نتائج بعد</p>';
@@ -761,7 +900,8 @@ function render() {
   $('secondSeats').innerHTML =
     second.map((r, i) =>
       '<div class="team">' +
-      (i + 1) + '. ' + esc(r.second_family) +
+      (i + 1) + '. ' +
+      esc(r.second_family) +
       '</div>'
     ).join('') ||
     '<p class="muted">لم تُنشر نتائج بعد</p>';
@@ -769,7 +909,8 @@ function render() {
   $('publicFamilies').innerHTML =
     publicNames.map((f, i) =>
       '<div class="team"><b>' +
-      (i + 1) + '. ' + esc(f.family) +
+      (i + 1) + '. ' +
+      esc(f.family) +
       '</b></div>'
     ).join('') ||
     '<p class="muted">لا توجد عوائل مسجلة</p>';
@@ -779,401 +920,436 @@ function render() {
 
   const publicEvents = new Map();
 
-  for (const r of rosters) {
-    if (!publicEvents.has(r.event_id)) {
-      publicEvents.set(r.event_id, {
-        event_id: r.event_id,
-        name: r.name || 'روم',
-        event_date: r.event_date,
-        event_time: r.event_time,
+  for (const row of rosters) {
+    if (!publicEvents.has(row.event_id)) {
+      publicEvents.set(row.event_id, {
+        name: row.name || 'روم',
+        event_date: row.event_date,
+        event_time: row.event_time,
         names: []
       });
     }
 
-    publicEvents.get(r.event_id).names.push(r.family);
+    publicEvents.get(row.event_id).names.push(row.family);
   }
 
-  for (const m of publicMatches) {
-    if (!publicEvents.has(m.event_id)) {
-      publicEvents.set(m.event_id, {
-        event_id: m.event_id,
-        name: m.room_name,
-        event_date: m.event_date,
-        event_time: m.event_time,
+  for (const match of publicMatches) {
+    if (!publicEvents.has(match.event_id)) {
+      publicEvents.set(match.event_id, {
+        name: match.room_name,
+        event_date: match.event_date,
+        event_time: match.event_time,
         names: []
       });
     }
   }
 
   $('eventList').innerHTML =
-    [...publicEvents.values()].map(e => {
-      const names = [...new Set(e.names.filter(Boolean))];
+    [...publicEvents.values()].map(room => {
+      const names = [
+        ...new Set(room.names.filter(Boolean))
+      ];
 
-      return '<div class="panel" style="margin:15px 0">' +
-        '<h2>' + esc(e.name) + '</h2>' +
+      return (
+        '<div class="panel" style="margin:15px 0">' +
+        '<h2>' + esc(room.name) + '</h2>' +
         '<p class="muted">' +
-        esc(e.event_date || '') + ' • ' +
-        esc(String(e.event_time || '').slice(0, 5)) +
+        esc(room.event_date) + ' • ' +
+        esc(String(room.event_time || '').slice(0, 5)) +
         '</p>' +
-        (names.length
-          ? names.map((name, i) =>
-              '<div class="team">' +
-              (i + 1) + '. ' + esc(name) +
-              '</div>'
-            ).join('')
-          : '<p class="muted">المواجهات متاحة في جدول المواجهات</p>') +
-        '<button onclick="show(\'matches\')">عرض المواجهات</button>' +
-        '</div>';
+        (
+          names.map((name, i) =>
+            '<div class="team">' +
+            (i + 1) + '. ' + esc(name) +
+            '</div>'
+          ).join('') ||
+          '<p class="muted">المواجهات متاحة في جدول المواجهات</p>'
+        ) +
+        '<button onclick="show(\'matches\')">' +
+        'عرض المواجهات</button></div>'
+      );
     }).join('') ||
     '<p class="muted">لا توجد رومات منشورة حاليًا</p>';
 
-  if (!admin) {
-    const editor = $('matchFamilyEditor');
-    if (editor) editor.remove();
-    return;
-  }
+  if (!admin) return;
 
   $('registrationState').textContent =
-    registrationOpen ? 'التسجيل مفتوح' : 'التسجيل مغلق';
+    registrationOpen
+      ? 'التسجيل مفتوح'
+      : 'التسجيل مغلق';
+
+  const state = preserveDetails();
+
+  /* العوائل */
 
   $('requests').innerHTML =
-    families.map(f => {
-      const used = assignments.filter(a => a.family_id === f.id);
-      const qualified = isQualified(f.id);
+    activeFamilies().map(family => {
+      const used = assignments.filter(a =>
+        a.family_id === family.id
+      );
+
+      const limit = familyLimit(family);
+      const qualified = isQualified(family.id);
 
       const options = events
-        .filter(e => !e.published && !eventMatches(e.id).length)
-        .map(e =>
-          '<option value="' + e.id + '">' +
-          esc(e.name) + ' — ' +
-          esc(e.event_date) + ' (' +
-          eventAssignments(e.id).length + '/8)' +
-          '</option>'
+        .filter(room =>
+          !room.published &&
+          !eventMatches(room.id).length
+        )
+        .map(room =>
+          '<option value="' + room.id + '">' +
+          esc(room.name) + ' — ' +
+          esc(room.event_date) + ' (' +
+          eventAssignments(room.id).length +
+          '/8)</option>'
         ).join('');
 
-      return '<div class="team">' +
-        '<div><b>' + esc(f.family) + '</b>' +
-        '<br><small>آيدي العائلة: ' + esc(f.family_id) +
-        ' | المنسق: ' + esc(f.coordinator) +
-        ' | آيدي المنسق: ' + esc(f.coordinator_id) +
+      return (
+        '<div class="team">' +
+        '<div><b>' + esc(family.family) + '</b>' +
+        '<br><small>آيدي العائلة: ' +
+        esc(family.family_id) +
+        ' | المنسق: ' +
+        esc(family.coordinator) +
+        ' | آيدي المنسق: ' +
+        esc(family.coordinator_id) +
         '</small>' +
-        '<br><small>المشاركات: ' + used.length + '/6' +
+        '<br><small>المشاركات: ' +
+        used.length + '/' + limit +
         (qualified ? ' • متأهلة' : '') +
         '</small>' +
         '<br><small>' +
-        (used.map(a =>
-          esc(events.find(e => e.id === a.event_id)?.name || 'روم')
-        ).join('، ') || 'في الانتظار') +
+        (
+          used.map(a =>
+            esc(
+              events.find(e => e.id === a.event_id)
+                ?.name || 'روم'
+            )
+          ).join('، ') || 'في الانتظار'
+        ) +
         '</small></div>' +
         '<div class="team-actions">' +
-        '<select id="assign_' + f.id + '">' +
+        '<select id="assign_' + family.id + '">' +
         '<option value="">اختر الروم</option>' +
         options +
         '</select>' +
         '<button ' +
-        (qualified || used.length >= 6 ? 'disabled' : '') +
-        ' onclick="assign(\'' + f.id +
-        '\',$(\'assign_' + f.id + '\').value)">توزيع</button>' +
+        (qualified || used.length >= limit
+          ? 'disabled'
+          : '') +
+        ' onclick="assign(\'' + family.id +
+        '\',$(\'assign_' + family.id +
+        '\').value)">توزيع</button>' +
         '<button class="secondary" onclick="editFamily(\'' +
-        f.id + '\')">تعديل</button>' +
+        family.id + '\')">تعديل البيانات</button>' +
+        '<button class="secondary" onclick="zoneSetLimit(\'' +
+        family.id + '\')">تعديل الفرص (' +
+        limit + ')</button>' +
         '<button class="danger" onclick="deleteFamily(\'' +
-        f.id + '\')">حذف من التسجيل</button>' +
-        used.map(a =>
+        family.id + '\')">سحب العائلة نهائيًا</button>' +
+        used.filter(a => {
+          const room = events.find(e => e.id === a.event_id);
+
+          return (
+            !room?.published &&
+            !eventMatches(a.event_id).length
+          );
+        }).map(a =>
           '<button class="secondary" onclick="unassign(\'' +
-          f.id + '\',\'' + a.event_id +
+          family.id + '\',\'' + a.event_id +
           '\')">إزالة من الروم</button>'
         ).join('') +
-        '</div></div>';
+        '</div></div>'
+      );
     }).join('') ||
     '<p class="muted">لا توجد عوائل مسجلة</p>';
 
-  $('roomControls').innerHTML =
-    events.map(e => {
-      const count = eventAssignments(e.id).length;
-      const matchCount = eventMatches(e.id).length;
+  /* الرومات */
 
-      return '<div class="team">' +
-        '<div><b>' + esc(e.name) + '</b>' +
-        '<br><small>' + esc(e.event_date) + ' • ' +
-        esc(e.event_time) + ' • ' +
-        count + '/8 عوائل • ' +
-        (e.published ? 'منشور' : 'مخفي') +
-        ' • ' + matchCount + '/7 مواجهات</small></div>' +
+  $('roomControls').innerHTML =
+    events.map(room => {
+      const count = eventAssignments(room.id).length;
+      const matches = eventMatches(room.id);
+
+      const body =
+        '<div class="team">' +
+        '<div><small>' +
+        esc(String(room.event_time || '').slice(0, 5)) +
+        ' • ' + count + '/8 عوائل • ' +
+        matches.length + '/7 مواجهات</small></div>' +
         '<div class="team-actions">' +
         '<button class="secondary" ' +
-        (e.published || count || matchCount ? 'disabled' : '') +
-        ' onclick="randomDraw(\'' + e.id +
+        (
+          room.published || count || matches.length
+            ? 'disabled'
+            : ''
+        ) +
+        ' onclick="randomDraw(\'' + room.id +
         '\')">قرعة عشوائية</button>' +
-        '<button onclick="publishRoom(\'' + e.id + '\',' +
-        (!e.published) + ')">' +
-        (e.published ? 'إخفاء' : 'نشر') +
+        '<button onclick="publishRoom(\'' +
+        room.id + '\',' + (!room.published) + ')">' +
+        (room.published ? 'إخفاء' : 'نشر') +
         '</button>' +
         '<button class="secondary" onclick="editRoom(\'' +
-        e.id + '\')">تعديل</button>' +
+        room.id + '\')">تعديل الروم</button>' +
         '<button class="danger" onclick="deleteRoom(\'' +
-        e.id + '\')">حذف الروم</button>' +
-        '</div></div>';
+        room.id + '\')">حذف الروم</button>' +
+        '</div></div>' +
+        (
+          count
+            ? '<h3>العوائل الموزعة</h3>' +
+              eventAssignments(room.id).map((a, i) =>
+                '<div class="team">' +
+                (i + 1) + '. ' +
+                esc(familyName(a.family_id)) +
+                '</div>'
+              ).join('')
+            : '<p class="muted">لم توزع عوائل بعد</p>'
+        );
+
+      return detailsHTML(
+        'room-' + room.id,
+        room.name + ' — ' + room.event_date +
+        ' • ' + (room.published ? 'منشور' : 'مخفي'),
+        body,
+        state
+      );
     }).join('') ||
     '<p class="muted">لم يتم إنشاء رومات بعد</p>';
 
-  renderMatchFamilyEditor();
-  renderAdminMatches();
+  renderMatchFamilyEditor(state);
+  renderAdminMatches(state);
 }
 
-/* لوحة التحكم بتعديل مواجهات دور الثمانية */
+/* تعديل مواجهات دور الثمانية */
 
-function renderMatchFamilyEditor() {
-  let panel = $('matchFamilyEditor');
+function renderMatchFamilyEditor(state) {
+  $('matchFamilyEditor').innerHTML =
+    events.map(room => {
+      const matches = eventMatches(room.id)
+        .filter(m => m.round_number === 1);
 
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'matchFamilyEditor';
-    panel.className = 'panel';
-    panel.style.marginTop = '20px';
+      const locked =
+        eventMatches(room.id).some(m =>
+          Boolean(m.winner_family_id)
+        ) ||
+        results.some(r => r.event_id === room.id);
 
-    $('roomControls').after(panel);
-  }
+      const optionList = activeFamilies().map(f =>
+        '<option value="' + f.id + '">' +
+        esc(f.family) +
+        '</option>'
+      ).join('');
 
-  panel.replaceChildren();
+      const select = (id, slot, selected) =>
+        '<select id="' + slot + '_' + id + '" ' +
+        (locked ? 'disabled' : '') + '>' +
+        '<option value="">اختر العائلة</option>' +
+        optionList +
+        (
+          selected &&
+          !activeFamilies().some(f => f.id === selected)
+            ? '<option value="' + selected + '">' +
+              esc(familyName(selected)) +
+              '</option>'
+            : ''
+        ) +
+        '</select>';
 
-  const heading = document.createElement('h2');
-  heading.textContent = 'التحكم بجدول المواجهات';
-
-  const info = document.createElement('p');
-  info.className = 'muted';
-  info.textContent =
-    'يمكنك استبدال عائلة في دور الثمانية قبل اعتماد أي نتيجة في الروم.';
-
-  const roomSelect = document.createElement('select');
-  roomSelect.style.width = '100%';
-
-  const emptyRoom = document.createElement('option');
-  emptyRoom.value = '';
-  emptyRoom.textContent = 'اختر الروم';
-  roomSelect.appendChild(emptyRoom);
-
-  for (const event of events) {
-    const option = document.createElement('option');
-    option.value = event.id;
-    option.textContent = event.name;
-    roomSelect.appendChild(option);
-  }
-
-  const list = document.createElement('div');
-
-  function renderSelectedRoom() {
-    list.replaceChildren();
-
-    const eventId = roomSelect.value;
-
-    if (!eventId) return;
-
-    const matches = eventMatches(eventId)
-      .filter(m => m.round_number === 1);
-
-    if (!matches.length) {
-      const empty = document.createElement('p');
-      empty.textContent = 'لا توجد مواجهات لهذا الروم';
-      list.appendChild(empty);
-      return;
-    }
-
-    const hasWinners = eventMatches(eventId)
-      .some(m => !!m.winner_family_id);
-
-    const hasResult = results.some(r => r.event_id === eventId);
-
-    if (hasWinners || hasResult) {
-      const warning = document.createElement('p');
-      warning.className = 'muted';
-      warning.textContent =
-        'تم تسجيل نتائج في هذا الروم. لا يمكن استبدال العوائل حتى تُعالج النتائج.';
-      list.appendChild(warning);
-    }
-
-    for (const match of matches) {
-      const card = document.createElement('div');
-      card.className = 'team';
-      card.style.display = 'block';
-      card.style.marginTop = '12px';
-      card.style.padding = '15px';
-
-      const title = document.createElement('h3');
-      title.textContent = 'المواجهة ' + match.match_number;
-
-      const versus = document.createElement('p');
-      versus.textContent =
-        familyName(match.first_family_id) +
-        ' ضد ' +
-        familyName(match.second_family_id);
-
-      const slotLabel = document.createElement('p');
-      slotLabel.textContent = 'اختر العائلة التي تريد استبدالها';
-
-      const slot = document.createElement('select');
-      slot.style.width = '100%';
-
-      for (const [value, familyId] of [
-        ['first', match.first_family_id],
-        ['second', match.second_family_id]
-      ]) {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = familyName(familyId);
-        slot.appendChild(option);
-      }
-
-      const replacementLabel = document.createElement('p');
-      replacementLabel.textContent = 'العائلة البديلة';
-
-      const replacement = document.createElement('select');
-      replacement.style.width = '100%';
-
-      const placeholder = document.createElement('option');
-      placeholder.value = '';
-      placeholder.textContent = 'اختر العائلة البديلة';
-      replacement.appendChild(placeholder);
-
-      for (const family of families) {
-        const option = document.createElement('option');
-        option.value = family.id;
-        option.textContent = family.family;
-        replacement.appendChild(option);
-      }
-
-      const save = document.createElement('button');
-      save.type = 'button';
-      save.textContent = 'حفظ تعديل المواجهة';
-      save.style.marginTop = '12px';
-      save.disabled = hasWinners || hasResult;
-
-      save.addEventListener('click', () => {
-        replaceMatchFamily(
-          match.id,
-          slot.value,
-          replacement.value
+      const body =
+        (
+          locked
+            ? '<p class="muted">' +
+              'هذا الروم بدأت نتائجه؛ التعديل مقفل لحماية النتائج.' +
+              '</p>'
+            : ''
+        ) +
+        (
+          matches.map(match =>
+            '<div class="zone-editor-card">' +
+            '<h3>المواجهة ' +
+            match.match_number + '</h3>' +
+            '<label>العائلة الأولى' +
+            select(
+              match.id,
+              'first',
+              match.first_family_id
+            ) +
+            '</label>' +
+            '<label>العائلة الثانية' +
+            select(
+              match.id,
+              'second',
+              match.second_family_id
+            ) +
+            '</label>' +
+            '<button ' +
+            (locked ? 'disabled' : '') +
+            ' onclick="zoneSaveTeams(\'' +
+            match.id +
+            '\',$(\'first_' + match.id +
+            '\').value,$(\'second_' + match.id +
+            '\').value)">' +
+            'حفظ طرفَي المواجهة</button>' +
+            '</div>'
+          ).join('') ||
+          '<p class="muted">لم تُنشأ مواجهات لهذا الروم</p>'
         );
-      });
 
-      card.append(
-        title,
-        versus,
-        slotLabel,
-        slot,
-        replacementLabel,
-        replacement,
-        save
+      return detailsHTML(
+        'edit-' + room.id,
+        room.name + ' — ' + room.event_date,
+        body,
+        state
       );
+    }).join('') ||
+    '<p class="muted">لا توجد رومات</p>';
 
-      list.appendChild(card);
+  for (const match of roomMatches.filter(m =>
+    m.round_number === 1
+  )) {
+    const first = $('first_' + match.id);
+    const second = $('second_' + match.id);
+
+    if (first) {
+      first.value = match.first_family_id || '';
+    }
+
+    if (second) {
+      second.value = match.second_family_id || '';
     }
   }
-
-  roomSelect.addEventListener('change', renderSelectedRoom);
-
-  panel.append(heading, info, roomSelect, list);
 }
 
-/* عرض المواجهات للإدارة */
+/* نتائج المواجهات */
 
-function renderAdminMatches() {
-  const roundTitles = {
+function renderAdminMatches(state) {
+  const titles = {
     1: 'دور الثمانية',
     2: 'نصف النهائي',
     3: 'النهائي'
   };
 
   $('resultControls').innerHTML =
-    events.map(e => {
-      const matches = eventMatches(e.id);
+    events.map(room => {
+      const matches = eventMatches(room.id);
 
       const final = matches.find(m =>
         m.round_number === 3 &&
         m.match_number === 1
       );
 
-      const result = results.find(r => r.event_id === e.id);
+      const result = results.find(r =>
+        r.event_id === room.id
+      );
 
-      const roundsHTML = [1, 2, 3].map(round => {
-        const items = matches.filter(m =>
+      const rounds = [1, 2, 3].map(round =>
+        '<div class="round">' +
+        '<h3>' + titles[round] + '</h3>' +
+        matches.filter(m =>
           m.round_number === round
-        );
-
-        return '<div class="round">' +
-          '<h3>' + roundTitles[round] + '</h3>' +
-          items.map(m => {
-            const first = m.first_family_id
-              ? familyName(m.first_family_id)
+        ).map(match => {
+          const first = match.first_family_id
+            ? familyName(match.first_family_id)
+            : round === 1
+              ? 'مكان شاغر'
               : 'بانتظار المتأهل';
 
-            const second = m.second_family_id
-              ? familyName(m.second_family_id)
+          const second = match.second_family_id
+            ? familyName(match.second_family_id)
+            : round === 1
+              ? 'مكان شاغر'
               : 'بانتظار المتأهل';
 
-            const complete =
-              m.first_family_id && m.second_family_id;
-
-            const options =
-              '<option value="">اختر الفائز</option>' +
-              (m.first_family_id
-                ? '<option value="' + m.first_family_id + '">' +
+          const options =
+            '<option value="">اختر الفائز</option>' +
+            (
+              match.first_family_id
+                ? '<option value="' +
+                  match.first_family_id + '">' +
                   esc(first) + '</option>'
-                : '') +
-              (m.second_family_id
-                ? '<option value="' + m.second_family_id + '">' +
+                : ''
+            ) +
+            (
+              match.second_family_id
+                ? '<option value="' +
+                  match.second_family_id + '">' +
                   esc(second) + '</option>'
-                : '');
+                : ''
+            );
 
-            return '<div class="match">' +
-              '<b>المواجهة ' + m.match_number + '</b>' +
-              '<div>' + esc(first) + '</div>' +
-              '<div>ضد</div>' +
-              '<div>' + esc(second) + '</div>' +
-              (m.winner_family_id
+          return (
+            '<div class="match">' +
+            '<b>المواجهة ' +
+            match.match_number + '</b>' +
+            '<div>' + esc(first) + '</div>' +
+            '<div>ضد</div>' +
+            '<div>' + esc(second) + '</div>' +
+            (
+              match.winner_family_id
                 ? '<p class="tag">الفائز: ' +
-                  esc(familyName(m.winner_family_id)) +
+                  esc(familyName(match.winner_family_id)) +
                   '</p>'
-                : complete
-                  ? '<select id="winner_' + m.id + '">' +
+                : match.first_family_id &&
+                  match.second_family_id
+                  ? '<select id="winner_' +
+                    match.id + '">' +
                     options +
                     '</select>' +
                     '<button onclick="setMatchWinner(\'' +
-                    m.id + '\',$(\'winner_' + m.id +
+                    match.id +
+                    '\',$(\'winner_' + match.id +
                     '\').value)">اعتماد الفائز</button>'
-                  : '<p class="muted">بانتظار اكتمال المواجهة</p>') +
-              '</div>';
-          }).join('') +
-          '</div>';
-      }).join('');
+                  : '<p class="muted">' +
+                    'بانتظار اكتمال المواجهة</p>'
+            ) +
+            '</div>'
+          );
+        }).join('') +
+        '</div>'
+      ).join('');
 
-      return '<div class="panel" style="margin:15px 0">' +
-        '<h2>' + esc(e.name) + '</h2>' +
-        '<p class="muted">' + esc(e.event_date) + '</p>' +
-        (matches.length
-          ? '<div class="rounds">' + roundsHTML + '</div>'
-          : '<p class="muted">لم تُنشأ مواجهات لهذا الروم بعد.</p>') +
-        (result
-          ? '<p class="tag">تم اعتماد النتيجة النهائية: ' +
-            esc(familyName(result.first_family_id)) +
-            ' — الوصيف: ' +
-            esc(familyName(result.second_family_id)) +
-            '</p>'
-          : final?.winner_family_id
-            ? '<button onclick="saveResult(\'' + e.id +
-              '\')">اعتماد الفائز والوصيف للتأهل</button>'
-            : '<p class="muted">اعتمد نتائج المواجهات حتى النهائي، ثم مقاعد التأهل.</p>') +
-        '</div>';
+      const body =
+        (
+          matches.length
+            ? '<div class="rounds">' +
+              rounds + '</div>'
+            : '<p class="muted">' +
+              'لم تُنشأ مواجهات لهذا الروم بعد.</p>'
+        ) +
+        (
+          result
+            ? '<p class="tag">تم اعتماد النتيجة: ' +
+              esc(familyName(result.first_family_id)) +
+              ' — الوصيف: ' +
+              esc(familyName(result.second_family_id)) +
+              '</p>'
+            : final?.winner_family_id
+              ? '<button onclick="saveResult(\'' +
+                room.id +
+                '\')">اعتماد الفائز والوصيف للتأهل</button>'
+              : '<p class="muted">' +
+                'اعتمد نتائج المواجهات حتى النهائي، ثم مقاعد التأهل.' +
+                '</p>'
+        );
+
+      return detailsHTML(
+        'result-' + room.id,
+        room.name + ' — ' + room.event_date,
+        body,
+        state
+      );
     }).join('') ||
     '<p class="muted">لا توجد رومات بعد</p>';
 }
 
-/* عرض جدول المواجهات للزوار */
+/* جدول المواجهات العام */
 
 function displayPublicMatches() {
   const container = $('publicMatches');
   if (!container) return;
 
-  container.innerHTML = '';
+  container.replaceChildren();
 
   if (!publicMatches.length) {
     container.innerHTML =
@@ -1187,6 +1363,7 @@ function displayPublicMatches() {
     if (!groups.has(match.event_id)) {
       groups.set(match.event_id, []);
     }
+
     groups.get(match.event_id).push(match);
   }
 
@@ -1198,8 +1375,8 @@ function displayPublicMatches() {
 
   for (const matches of groups.values()) {
     const firstMatch = matches[0];
-
     const title = document.createElement('h2');
+
     title.textContent =
       firstMatch.room_name + ' — ' +
       dateStr(firstMatch.event_date) +
@@ -1212,12 +1389,16 @@ function displayPublicMatches() {
     container.appendChild(title);
 
     const scroll = document.createElement('div');
+
     scroll.style.cssText =
-      'width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:15px';
+      'width:100%;overflow-x:auto;' +
+      '-webkit-overflow-scrolling:touch;padding-bottom:15px';
 
     const stage = document.createElement('div');
+
     stage.style.cssText =
-      'position:relative;width:850px;height:550px;direction:ltr;margin:auto';
+      'position:relative;width:850px;height:550px;' +
+      'direction:ltr;margin:auto';
 
     const positions = [
       [100, 220, 340, 460],
@@ -1228,8 +1409,8 @@ function displayPublicMatches() {
     const x = [10, 310, 610];
     const width = 230;
     const height = 94;
-
     const ns = 'http://www.w3.org/2000/svg';
+
     const svg = document.createElementNS(ns, 'svg');
 
     svg.setAttribute('width', '850');
@@ -1242,12 +1423,16 @@ function displayPublicMatches() {
     function line(x1, y1, x2, y2) {
       const element = document.createElementNS(ns, 'line');
 
-      element.setAttribute('x1', x1);
-      element.setAttribute('y1', y1);
-      element.setAttribute('x2', x2);
-      element.setAttribute('y2', y2);
-      element.setAttribute('stroke', '#b8758a');
-      element.setAttribute('stroke-width', '2');
+      for (const [key, value] of Object.entries({
+        x1,
+        y1,
+        x2,
+        y2,
+        stroke: '#b8758a',
+        'stroke-width': '2'
+      })) {
+        element.setAttribute(key, value);
+      }
 
       svg.appendChild(element);
     }
@@ -1277,14 +1462,15 @@ function displayPublicMatches() {
 
     for (let r = 0; r < 3; r++) {
       const round = r + 1;
-
       const heading = document.createElement('div');
+
       heading.textContent = roundNames[round];
 
       heading.style.cssText =
         'position:absolute;left:' + x[r] +
         'px;top:15px;width:' + width +
-        'px;text-align:center;font-size:18px;font-weight:bold;color:#e3a8b2';
+        'px;text-align:center;font-size:18px;' +
+        'font-weight:bold;color:#e3a8b2';
 
       stage.appendChild(heading);
 
@@ -1295,10 +1481,14 @@ function displayPublicMatches() {
         );
 
         const first = match?.first_family ||
-          (round === 1 ? 'بانتظار القرعة' : 'بانتظار المتأهل');
+          (round === 1
+            ? 'مكان شاغر'
+            : 'بانتظار المتأهل');
 
         const second = match?.second_family ||
-          (round === 1 ? 'بانتظار القرعة' : 'بانتظار المتأهل');
+          (round === 1
+            ? 'مكان شاغر'
+            : 'بانتظار المتأهل');
 
         const winner = match?.winner_family || '';
 
@@ -1309,27 +1499,44 @@ function displayPublicMatches() {
           'px;top:' + (positions[r][i] - height / 2) +
           'px;width:' + width +
           'px;height:' + height +
-          'px;background:#25151c;border:1px solid #a85b70;border-radius:12px;color:white;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;padding:8px;direction:rtl;text-align:center;overflow-wrap:anywhere';
+          'px;background:#25151c;' +
+          'border:1px solid #a85b70;' +
+          'border-radius:12px;color:white;' +
+          'display:flex;flex-direction:column;' +
+          'justify-content:center;align-items:center;' +
+          'gap:5px;padding:8px;direction:rtl;' +
+          'text-align:center;overflow-wrap:anywhere';
 
-        const label = document.createElement('div');
-        label.textContent = 'المواجهة ' + (i + 1);
-        label.style.cssText = 'font-size:11px;color:#e3a8b2';
+        const elements = [
+          [
+            'المواجهة ' + (i + 1),
+            'font-size:11px;color:#e3a8b2'
+          ],
+          [
+            (winner && winner === first ? '🏆 ' : '') +
+              first,
+            'font-size:13px;font-weight:bold'
+          ],
+          [
+            'VS',
+            'font-size:11px;color:#ff6572'
+          ],
+          [
+            (winner && winner === second ? '🏆 ' : '') +
+              second,
+            'font-size:13px;font-weight:bold'
+          ]
+        ];
 
-        const team1 = document.createElement('div');
-        team1.textContent =
-          (winner && winner === first ? '🏆 ' : '') + first;
-        team1.style.cssText = 'font-size:13px;font-weight:bold';
+        for (const [content, css] of elements) {
+          const element = document.createElement('div');
 
-        const versus = document.createElement('div');
-        versus.textContent = 'VS';
-        versus.style.cssText = 'font-size:11px;color:#ff6572';
+          element.textContent = content;
+          element.style.cssText = css;
 
-        const team2 = document.createElement('div');
-        team2.textContent =
-          (winner && winner === second ? '🏆 ' : '') + second;
-        team2.style.cssText = 'font-size:13px;font-weight:bold';
+          card.appendChild(element);
+        }
 
-        card.append(label, team1, versus, team2);
         stage.appendChild(card);
       }
     }
@@ -1342,746 +1549,3 @@ function displayPublicMatches() {
 /* تشغيل الموقع */
 
 fetchAll();
-
-/* ===================================================
-   ZONE 64 - تحديث لوحة الإدارة
-   الحذف - الفرص - تعديل المواجهات - الرومات
-   الصق هذا الكود في نهاية app.js
-=================================================== */
-
-const zoneOriginalRender = render;
-const zoneOriginalFetchAll = fetchAll;
-const zoneOriginalFamilyName = familyName;
-
-let zoneArchivedFamilies = new Map();
-
-/* الاحتفاظ بأسماء العوائل السابقة لعرض النتائج */
-
-familyName = function (id) {
-  if (!id) return 'مكان شاغر';
-
-  return families.find(f => f.id === id)?.family ||
-    zoneArchivedFamilies.get(id) ||
-    'عائلة غير معروفة';
-};
-
-/* إخفاء المنسحبين من لوحة التسجيل */
-
-fetchAll = async function () {
-  await zoneOriginalFetchAll();
-
-  if (!admin) return;
-
-  zoneArchivedFamilies = new Map(
-    families.map(f => [f.id, f.family])
-  );
-
-  families = families.filter(f => f.is_active !== false);
-
-  render();
-};
-
-/* عدد الفرص المتاحة لكل عائلة */
-
-function zoneFamilyLimit(family) {
-  const value = Number(family.max_participations);
-  return Number.isInteger(value) && value >= 0
-    ? value
-    : 10;
-}
-
-/* تعديل عدد الفرص */
-
-async function zoneSetFamilyLimit(id) {
-  if (!admin) return;
-
-  const family = families.find(f => f.id === id);
-  if (!family) return notify('العائلة غير موجودة');
-
-  const current = zoneFamilyLimit(family);
-
-  const answer = prompt(
-    'كم عدد فرص المشاركة لعائلة ' + family.family + '؟',
-    String(current)
-  );
-
-  if (answer === null) return;
-
-  const value = Number(answer.trim());
-
-  if (
-    !Number.isSafeInteger(value) ||
-    value < 0 ||
-    answer.trim() === ''
-  ) {
-    return notify('اكتب عددًا صحيحًا من صفر فأعلى');
-  }
-
-  const { error } = await db.rpc(
-    'zone_admin_set_family_limit',
-    {
-      p_family_id: id,
-      p_limit: value
-    }
-  );
-
-  if (error) {
-    return notify('تعذر تغيير الفرص: ' + error.message);
-  }
-
-  await fetchAll();
-
-  notify(
-    'تم تحديد ' + value +
-    ' فرصة لعائلة ' + family.family
-  );
-}
-
-/* توزيع عائلة حسب فرصها الخاصة */
-
-assign = async function (familyId, eventId) {
-  if (!admin || !eventId) return;
-
-  const family = families.find(f => f.id === familyId);
-  const room = events.find(e => e.id === eventId);
-
-  if (!family) return notify('العائلة غير موجودة');
-
-  if (!room || room.published) {
-    return notify('يجب أن يكون الروم مخفيًا');
-  }
-
-  if (eventMatches(eventId).length) {
-    return notify('تم إنشاء مواجهات هذا الروم');
-  }
-
-  const used = assignments.filter(
-    a => a.family_id === familyId
-  );
-
-  if (used.length >= zoneFamilyLimit(family)) {
-    return notify('العائلة استنفدت فرص مشاركتها');
-  }
-
-  if (isQualified(familyId)) {
-    return notify('العائلة متأهلة بالفعل');
-  }
-
-  if (eventAssignments(eventId).length >= 8) {
-    return notify('الروم مكتمل');
-  }
-
-  if (used.some(a => a.event_id === eventId)) {
-    return notify('العائلة موجودة بالفعل في الروم');
-  }
-
-  const { error } = await db.from('assignments').insert({
-    family_id: familyId,
-    event_id: eventId
-  });
-
-  if (error) {
-    return notify('تعذر التوزيع: ' + error.message);
-  }
-
-  await fetchAll();
-  notify('تم توزيع العائلة بنجاح');
-};
-
-/* حذف العائلة المنسحبة */
-
-deleteFamily = async function (id) {
-  if (!admin) return;
-
-  const family = families.find(f => f.id === id);
-
-  if (!family) {
-    return notify('العائلة غير موجودة');
-  }
-
-  if (!confirm(
-    'حذف عائلة "' + family.family + '" من التسجيل؟\n\n' +
-    'لن تظهر في التسجيل والقرعات القادمة، ' +
-    'وستبقى نتائجها السابقة محفوظة.'
-  )) {
-    return;
-  }
-
-  const { error } = await db.rpc(
-    'zone_admin_withdraw_family',
-    { p_family_id: id }
-  );
-
-  if (error) {
-    return notify('تعذر الحذف: ' + error.message);
-  }
-
-  await fetchAll();
-
-  notify(
-    'تم حذف عائلة ' + family.family +
-    ' من التسجيل بنجاح'
-  );
-};
-
-/* تعديل طرفَي المواجهة بضغطة واحدة */
-
-async function zoneSaveMatchTeams(
-  matchId,
-  firstId,
-  secondId
-) {
-  if (!admin) return;
-
-  if (!firstId || !secondId) {
-    return notify('اختر العائلتين أولًا');
-  }
-
-  if (firstId === secondId) {
-    return notify('لا يمكن اختيار العائلة نفسها مرتين');
-  }
-
-  const match = roomMatches.find(m => m.id === matchId);
-
-  if (!match) {
-    return notify('المواجهة غير موجودة');
-  }
-
-  const firstName = familyName(firstId);
-  const secondName = familyName(secondId);
-
-  if (!confirm(
-    'حفظ طرفَي المواجهة؟\n\n' +
-    firstName + '\nضد\n' + secondName
-  )) {
-    return;
-  }
-
-  const { error } = await db.rpc(
-    'zone_admin_edit_match',
-    {
-      p_match_id: matchId,
-      p_first_id: firstId,
-      p_second_id: secondId
-    }
-  );
-
-  if (error) {
-    return notify(
-      'تعذر تعديل المواجهة: ' + error.message
-    );
-  }
-
-  await fetchAll();
-
-  notify('تم حفظ العائلتين وتحديث المواجهة');
-}
-
-/* أدوات إنشاء القوائم */
-
-function zoneCreateElement(tag, textValue, className) {
-  const el = document.createElement(tag);
-
-  if (textValue !== undefined) {
-    el.textContent = textValue;
-  }
-
-  if (className) {
-    el.className = className;
-  }
-
-  return el;
-}
-
-function zoneCreateSelect(value, candidates) {
-  const select = document.createElement('select');
-
-  select.style.cssText =
-    'width:100%;max-width:100%;margin:8px 0 12px';
-
-  const empty = document.createElement('option');
-  empty.value = '';
-  empty.textContent = 'اختر العائلة';
-  select.appendChild(empty);
-
-  for (const family of candidates) {
-    const option = document.createElement('option');
-
-    option.value = family.id;
-    option.textContent = family.family;
-
-    select.appendChild(option);
-  }
-
-  if (value && !candidates.some(f => f.id === value)) {
-    const oldOption = document.createElement('option');
-    oldOption.value = value;
-    oldOption.textContent = familyName(value);
-    select.appendChild(oldOption);
-  }
-
-  select.value = value || '';
-
-  return select;
-}
-
-/* لوحة تعديل طرفَي المواجهة */
-
-renderMatchFamilyEditor = function () {
-  let panel = $('matchFamilyEditor');
-
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'matchFamilyEditor';
-    panel.className = 'panel';
-    panel.style.marginTop = '20px';
-
-    $('roomControls').after(panel);
-  }
-
-  panel.replaceChildren();
-
-  panel.appendChild(
-    zoneCreateElement(
-      'h2',
-      'تعديل مواجهات دور الثمانية'
-    )
-  );
-
-  panel.appendChild(
-    zoneCreateElement(
-      'p',
-      'اختر الروم، ثم حدد العائلتين في المواجهة واضغط حفظ مرة واحدة.',
-      'muted'
-    )
-  );
-
-  for (const room of events) {
-    const roomDetails = document.createElement('details');
-
-    roomDetails.style.cssText =
-      'margin:12px 0;padding:12px;' +
-      'border:1px solid #73505d;border-radius:12px';
-
-    const summary = document.createElement('summary');
-
-    summary.style.cssText =
-      'cursor:pointer;font-weight:bold;padding:8px';
-
-    summary.textContent =
-      room.name + ' — ' + room.event_date;
-
-    roomDetails.appendChild(summary);
-
-    const matches = eventMatches(room.id)
-      .filter(m => m.round_number === 1);
-
-    const hasResults =
-      eventMatches(room.id).some(
-        m => Boolean(m.winner_family_id)
-      ) ||
-      results.some(r => r.event_id === room.id);
-
-    if (!matches.length) {
-      roomDetails.appendChild(
-        zoneCreateElement(
-          'p',
-          'لم يتم إنشاء مواجهات لهذا الروم',
-          'muted'
-        )
-      );
-
-      panel.appendChild(roomDetails);
-      continue;
-    }
-
-    if (hasResults) {
-      roomDetails.appendChild(
-        zoneCreateElement(
-          'p',
-          'هذا الروم بدأت نتائجه؛ التعديل مقفل لحماية النتائج السابقة.',
-          'muted'
-        )
-      );
-    }
-
-    for (const match of matches) {
-      const card = document.createElement('div');
-
-      card.className = 'team';
-      card.style.cssText =
-        'display:block;margin:12px 0;padding:15px;' +
-        'border:1px solid #73505d;border-radius:12px';
-
-      card.appendChild(
-        zoneCreateElement(
-          'h3',
-          'المواجهة ' + match.match_number
-        )
-      );
-
-      const firstLabel = zoneCreateElement(
-        'p',
-        'العائلة الأولى'
-      );
-
-      const secondLabel = zoneCreateElement(
-        'p',
-        'العائلة الثانية'
-      );
-
-      const firstSelect = zoneCreateSelect(
-        match.first_family_id,
-        families
-      );
-
-      const secondSelect = zoneCreateSelect(
-        match.second_family_id,
-        families
-      );
-
-      firstSelect.disabled = hasResults;
-      secondSelect.disabled = hasResults;
-
-      const save = document.createElement('button');
-
-      save.type = 'button';
-      save.textContent = 'حفظ طرفَي المواجهة';
-      save.disabled = hasResults;
-
-      save.style.cssText =
-        'width:100%;margin-top:10px';
-
-      save.addEventListener('click', () => {
-        zoneSaveMatchTeams(
-          match.id,
-          firstSelect.value,
-          secondSelect.value
-        );
-      });
-
-      card.append(
-        firstLabel,
-        firstSelect,
-        secondLabel,
-        secondSelect,
-        save
-      );
-
-      roomDetails.appendChild(card);
-    }
-
-    panel.appendChild(roomDetails);
-  }
-};
-
-/* تحويل قوائم الرومات إلى أقسام قابلة للفتح */
-
-function zoneCollapseRooms(containerId) {
-  const container = $(containerId);
-
-  if (!container) return;
-
-  const children = Array.from(container.children);
-
-  children.forEach((child, index) => {
-    if (
-      child.tagName === 'DETAILS' ||
-      !child.querySelector('h2, b')
-    ) {
-      return;
-    }
-
-    const heading = child.querySelector('h2, b');
-
-    const room = events[index];
-
-    if (!room) return;
-
-    const details = document.createElement('details');
-    details.className = 'zone-room-accordion';
-
-    details.style.cssText =
-      'margin:12px 0;border:1px solid #73505d;' +
-      'border-radius:12px;padding:10px';
-
-    const summary = document.createElement('summary');
-
-    summary.style.cssText =
-      'cursor:pointer;font-weight:bold;padding:10px';
-
-    summary.textContent =
-      room.name + ' — ' + room.event_date +
-      (room.published ? ' • منشور' : ' • مخفي');
-
-    details.appendChild(summary);
-    details.appendChild(child);
-
-    container.appendChild(details);
-  });
-}
-
-/* تحديث عرض العوائل والرومات */
-
-render = function () {
-  if (admin) {
-    zoneArchivedFamilies = new Map([
-      ...zoneArchivedFamilies,
-      ...families.map(f => [f.id, f.family])
-    ]);
-
-    families = families.filter(
-      f => f.is_active !== false
-    );
-  }
-
-  zoneOriginalRender();
-
-  if (!admin) return;
-
-  /* تحديث عداد الفرص وأزرار العوائل */
-
-  const cards = Array.from(
-    $('requests').querySelectorAll('.team')
-  );
-
-  families.forEach((family, index) => {
-    const card = cards[index];
-
-    if (!card) return;
-
-    const used = assignments.filter(
-      a => a.family_id === family.id
-    ).length;
-
-    const limit = zoneFamilyLimit(family);
-
-    const smalls = card.querySelectorAll('small');
-
-    if (smalls[1]) {
-      smalls[1].textContent =
-        'المشاركات: ' + used + '/' + limit +
-        (isQualified(family.id) ? ' • متأهلة' : '');
-    }
-
-    const actions = card.querySelector('.team-actions');
-
-    if (!actions) return;
-
-    const buttons = Array.from(
-      actions.querySelectorAll('button')
-    );
-
-    const assignButton = buttons.find(
-      b => b.textContent.trim() === 'توزيع'
-    );
-
-    if (assignButton) {
-      assignButton.disabled =
-        isQualified(family.id) ||
-        used >= limit;
-    }
-
-    const deleteButton = buttons.find(
-      b => b.textContent.includes('حذف من التسجيل')
-    );
-
-    if (deleteButton) {
-      deleteButton.textContent = 'حذف العائلة نهائيًا';
-    }
-
-    const limitButton = document.createElement('button');
-
-    limitButton.type = 'button';
-    limitButton.className = 'secondary';
-    limitButton.textContent = 'تعديل الفرص (' + limit + ')';
-
-    limitButton.addEventListener('click', () => {
-      zoneSetFamilyLimit(family.id);
-    });
-
-    actions.appendChild(limitButton);
-  });
-
-  /* الرومات تفتح وتقفل بالضغط */
-
-  zoneCollapseRooms('roomControls');
-  zoneCollapseRooms('resultControls');
-};
-
-/* إعادة تحميل البيانات بعد تركيب التحديث */
-
-fetchAll();
-
-/* =========================================
-   ZONE 64
-   طي وفتح الأقسام الثلاثة في لوحة الإدارة
-   ========================================= */
-
-const zonePreviousRender = render;
-
-const zoneOpenSections = new Map();
-
-/* إنشاء قسم قابل للفتح والإغلاق */
-
-function zoneMakeAccordion(title, content, key) {
-  const details = document.createElement('details');
-  details.className = 'zone-accordion';
-
-  details.style.cssText = `
-    margin: 12px 0;
-    padding: 12px;
-    border: 1px solid #73505d;
-    border-radius: 14px;
-    background: #24151b;
-  `;
-
-  const summary = document.createElement('summary');
-
-  summary.textContent = title;
-  summary.style.cssText = `
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 19px;
-    padding: 10px;
-    line-height: 1.8;
-    overflow-wrap: anywhere;
-  `;
-
-  details.open = zoneOpenSections.get(key) || false;
-
-  details.addEventListener('toggle', () => {
-    if (details.isConnected) {
-      zoneOpenSections.set(key, details.open);
-    }
-  });
-
-  details.append(summary, content);
-
-  return details;
-}
-
-/* طي قسم كامل مع الاحتفاظ بالأزرار */
-
-function zoneCollapseSection(containerId, title, key) {
-  const container = document.getElementById(containerId);
-
-  if (!container) return;
-
-  const panel = container.closest('.panel');
-
-  if (!panel) return;
-
-  if (panel.dataset.zoneCollapsed === key) return;
-
-  const content = document.createElement('div');
-
-  const children = Array.from(panel.children);
-
-  children.forEach(child => {
-    content.appendChild(child);
-  });
-
-  const accordion = zoneMakeAccordion(
-    title,
-    content,
-    key
-  );
-
-  panel.appendChild(accordion);
-
-  panel.dataset.zoneCollapsed = key;
-}
-
-/* جعل كل روم في القرعة يفتح لحاله */
-
-function zoneCollapseRoomCards() {
-  const container = document.getElementById('roomControls');
-
-  if (!container) return;
-
-  const cards = Array.from(container.children)
-    .filter(child => child.classList.contains('team'));
-
-  cards.forEach((card, index) => {
-    const room = events[index];
-
-    if (!room) return;
-
-    const title =
-      room.name + ' — ' +
-      room.event_date + ' • ' +
-      (room.published ? 'منشور' : 'مخفي');
-
-    const accordion = zoneMakeAccordion(
-      title,
-      card,
-      'draw-room-' + room.id
-    );
-
-    container.appendChild(accordion);
-  });
-}
-
-/* طي قسم تعديل مواجهات دور الثمانية */
-
-function zoneCollapseMatchEditor() {
-  const panel = document.getElementById('matchFamilyEditor');
-
-  if (!panel) return;
-
-  if (panel.dataset.zoneCollapsed === 'match-editor') {
-    return;
-  }
-
-  const content = document.createElement('div');
-
-  Array.from(panel.children).forEach(child => {
-    content.appendChild(child);
-  });
-
-  const accordion = zoneMakeAccordion(
-    'تعديل مواجهات دور الثمانية',
-    content,
-    'match-editor'
-  );
-
-  panel.appendChild(accordion);
-
-  panel.dataset.zoneCollapsed = 'match-editor';
-}
-
-/* إعادة ترتيب لوحة الإدارة بعد عرض البيانات */
-
-render = function () {
-  zonePreviousRender();
-
-  if (!admin) return;
-
-  /* القسم الأول: العوائل */
-
-  zoneCollapseSection(
-    'requests',
-    'قائمة انتظار العوائل وبيانات المنسقين',
-    'families-section'
-  );
-
-  /* القسم الثاني: القرعة والرومات */
-
-  zoneCollapseRoomCards();
-
-  zoneCollapseSection(
-    'roomControls',
-    'القرعة العشوائية وإدارة الرومات',
-    'rooms-section'
-  );
-
-  /* القسم الثالث: تعديل المواجهات */
-
-  zoneCollapseMatchEditor();
-};
-
-/* تطبيق التحديث */
-
-render();
-
