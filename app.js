@@ -24,6 +24,7 @@ let scoreboard = [];
 let roomMatches = [];
 let publicMatches = [];
 let registrationOpen = true;
+let manualQualifications = [];
 
 const $ = id => document.getElementById(id);
 
@@ -66,7 +67,8 @@ const isQualified = id =>
   results.some(r =>
     r.first_family_id === id ||
     r.second_family_id === id
-  );
+  ) ||
+  manualQualifications.some(q => q.family_id === id);
 
 const dateStr = date =>
   date
@@ -84,7 +86,6 @@ function notify(message) {
   if (!el) return;
   el.textContent = message;
   el.hidden = false;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function show(id) {
@@ -97,18 +98,59 @@ function show(id) {
 function showPage(id) {
   show(id);
   document.querySelectorAll('.nav-item').forEach(b => {
-    b.classList.toggle(
-      'active-nav',
-      b.dataset.page === id
-    );
+    b.classList.toggle('active-nav', b.dataset.page === id);
   });
+}
+
+function capturePosition() {
+  return {
+    scroll: window.scrollY,
+    details: new Map(
+      [...document.querySelectorAll('details[id]')]
+        .map(el => [el.id, el.open])
+    ),
+    roomDetails: preserveDetails()
+  };
+}
+
+function restorePosition(state) {
+  if (!state) return;
+
+  for (const [id, open] of state.details) {
+    const el = $(id);
+    if (el) el.open = open;
+  }
+
+  document.querySelectorAll(
+    'details[data-room-key]'
+  ).forEach(el => {
+    if (state.roomDetails.has(el.dataset.roomKey)) {
+      el.open = state.roomDetails.get(el.dataset.roomKey);
+    }
+  });
+
+  requestAnimationFrame(() => {
+    window.scrollTo({
+      top: state.scroll,
+      left: 0,
+      behavior: 'instant'
+    });
+  });
+}
+
+async function refreshKeepingPosition(message) {
+  const state = capturePosition();
+  const ok = await fetchAll();
+  if (ok && message) notify(message);
+  restorePosition(state);
 }
 
 /* تحميل البيانات */
 
 async function fetchAll() {
   if (!db) {
-    return notify('تحقق من إعدادات Supabase في config.js');
+    notify('تحقق من إعدادات Supabase في config.js');
+    return false;
   }
 
   try {
@@ -124,8 +166,8 @@ async function fetchAll() {
       admin = !check.error && check.data === true;
     }
 
-    $('adminLogin').hidden = admin;
-    $('adminTools').hidden = !admin;
+    if ($('adminLogin')) $('adminLogin').hidden = admin;
+    if ($('adminTools')) $('adminTools').hidden = !admin;
 
     const queries = await Promise.all([
       db.from('public_family_names')
@@ -143,7 +185,8 @@ async function fetchAll() {
         .select('*')
         .order('event_date')
         .order('round_number')
-        .order('match_number')
+        .order('match_number'),
+      db.rpc('zone_public_manual_qualifications')
     ]);
 
     for (const q of queries) {
@@ -156,6 +199,7 @@ async function fetchAll() {
     registrationOpen =
       queries[3].data?.registration_open ?? true;
     publicMatches = queries[4].data || [];
+    manualQualifications = queries[5].data || [];
 
     if (admin) {
       const privateQueries = await Promise.all([
@@ -194,9 +238,11 @@ async function fetchAll() {
 
     render();
     displayPublicMatches();
+    return true;
 
   } catch (error) {
     notify('تعذر تحميل البيانات: ' + error.message);
+    return false;
   }
 }
 
@@ -295,8 +341,7 @@ $('eventForm').addEventListener('submit', async event => {
   if (error) return notify(error.message);
 
   event.target.reset();
-  await fetchAll();
-  notify('تم إنشاء الروم بنجاح');
+  await refreshKeepingPosition('تم إنشاء الروم بنجاح');
 });
 
 /* توزيع عائلة */
@@ -348,8 +393,7 @@ async function assign(familyId, eventId) {
     return notify('تعذر التوزيع: ' + error.message);
   }
 
-  await fetchAll();
-  notify('تم توزيع العائلة');
+  await refreshKeepingPosition('تم توزيع العائلة');
 }
 
 /* القرعة */
@@ -370,6 +414,13 @@ async function randomDraw(eventId) {
     return notify('الروم يحتوي على توزيع أو مواجهات مسبقة');
   }
 
+  if (manualQualifications.length) {
+    return notify(
+      'القرعة متوقفة مؤقتًا لوجود مقاعد تأهل يدوية. ' +
+      'يجب التأكد من أن دالة القرعة تستبعد المتأهلين يدويًا.'
+    );
+  }
+
   if (!confirm(
     'إجراء قرعة عشوائية لاختيار 8 عوائل وإنشاء المواجهات؟'
   )) return;
@@ -383,8 +434,9 @@ async function randomDraw(eventId) {
     return notify('تعذرت القرعة: ' + error.message);
   }
 
-  await fetchAll();
-  notify('نجحت القرعة واختيرت ' + data + ' عوائل');
+  await refreshKeepingPosition(
+    'نجحت القرعة واختيرت ' + data + ' عوائل'
+  );
 }
 
 /* إزالة من الروم */
@@ -413,7 +465,7 @@ async function unassign(familyId, eventId) {
 
   if (error) return notify(error.message);
 
-  await fetchAll();
+  await refreshKeepingPosition('تمت إزالة العائلة من الروم');
 }
 
 /* نشر الروم */
@@ -444,8 +496,9 @@ async function publishRoom(id, published) {
 
   if (error) return notify(error.message);
 
-  await fetchAll();
-  notify(published ? 'تم نشر الروم' : 'تم إخفاء الروم');
+  await refreshKeepingPosition(
+    published ? 'تم نشر الروم' : 'تم إخفاء الروم'
+  );
 }
 
 /* اعتماد الفائز */
@@ -492,9 +545,7 @@ async function setMatchWinner(matchId, winnerId) {
     return notify('تعذر اعتماد الفائز: ' + error.message);
   }
 
-  await fetchAll();
-
-  notify(
+  await refreshKeepingPosition(
     match.round_number === 3
       ? 'تم اعتماد بطل النهائي. اعتمد مقاعد التأهل الآن.'
       : 'تم اعتماد الفائز وترحيله للدور التالي'
@@ -531,11 +582,7 @@ async function zoneCorrectWinner(matchId) {
     return notify('تعذر تحديد الفائز البديل');
   }
 
-  const existing = results.some(
-    r => r.event_id === match.event_id
-  );
-
-  if (existing) {
+  if (results.some(r => r.event_id === match.event_id)) {
     return notify(
       'هذا الروم اعتمدت مقاعد تأهله؛ يجب تصحيح التأهل أولًا'
     );
@@ -558,8 +605,6 @@ async function zoneCorrectWinner(matchId) {
     '\nالجديد: ' + familyName(replacement)
   )) return;
 
-  const scroll = window.scrollY;
-
   const { error } = await db.rpc(
     'zone_admin_correct_winner',
     {
@@ -572,17 +617,9 @@ async function zoneCorrectWinner(matchId) {
     return notify('تعذر تعديل النتيجة: ' + error.message);
   }
 
-  await fetchAll();
-
-  notify('تم تصحيح الفائز وتحديث المتأهل للدور التالي');
-
-  requestAnimationFrame(() => {
-    window.scrollTo({
-      top: scroll,
-      left: 0,
-      behavior: 'auto'
-    });
-  });
+  await refreshKeepingPosition(
+    'تم تصحيح الفائز وتحديث المتأهل للدور التالي'
+  );
 }
 
 /* اعتماد التأهل */
@@ -615,8 +652,33 @@ async function saveResult(eventId) {
 
   const existing = results.find(r => r.event_id === eventId);
 
-  if (!existing && results.length >= 32) {
-    return notify('اكتملت مقاعد البطولة');
+  const manualMain = manualQualifications.filter(
+    q => q.qualification_path === 'main'
+  ).length;
+
+  const manualSecond = manualQualifications.filter(
+    q => q.qualification_path === 'second'
+  ).length;
+
+  const mainCount = results.filter(
+    r => r.first_family_id
+  ).length + manualMain;
+
+  const secondCount = results.filter(
+    r => r.second_family_id
+  ).length + manualSecond;
+
+  if (!existing && (mainCount >= 32 || secondCount >= 32)) {
+    return notify('اكتملت مقاعد أحد مسارات التأهل');
+  }
+
+  if (manualQualifications.some(q =>
+    q.family_id === first || q.family_id === second
+  )) {
+    return notify(
+      'إحدى العائلتين لديها مقعد يدوي. ' +
+      'أزل المقعد اليدوي أولًا لتجنب تكرار التأهل.'
+    );
   }
 
   if (results.some(r =>
@@ -644,8 +706,9 @@ async function saveResult(eventId) {
 
   if (error) return notify(error.message);
 
-  await fetchAll();
-  notify('تم اعتماد الفائز والوصيف وإضافة مقاعد التأهل');
+  await refreshKeepingPosition(
+    'تم اعتماد الفائز والوصيف وإضافة مقاعد التأهل'
+  );
 }
 
 /* فتح وإغلاق التسجيل */
@@ -661,7 +724,7 @@ async function toggleRegistration() {
 
   if (error) return notify(error.message);
 
-  await fetchAll();
+  await refreshKeepingPosition('تم تحديث حالة التسجيل');
 }
 
 /* إضافة عائلة */
@@ -690,7 +753,7 @@ async function addFamily() {
 
   if (error) return notify(error.message);
 
-  await fetchAll();
+  await refreshKeepingPosition('تمت إضافة العائلة');
 }
 
 /* تعديل بيانات عائلة */
@@ -731,7 +794,7 @@ async function editFamily(id) {
 
   if (error) return notify(error.message);
 
-  await fetchAll();
+  await refreshKeepingPosition('تم تعديل بيانات العائلة');
 }
 
 /* تعديل فرص العائلة */
@@ -771,9 +834,7 @@ async function zoneSetLimit(id) {
     return notify('تعذر تغيير الفرص: ' + error.message);
   }
 
-  await fetchAll();
-
-  notify(
+  await refreshKeepingPosition(
     'تم تحديد ' + value + ' فرصة لعائلة ' + f.family
   );
 }
@@ -801,8 +862,9 @@ async function deleteFamily(id) {
     return notify('تعذر سحب العائلة: ' + error.message);
   }
 
-  await fetchAll();
-  notify('تم سحب العائلة من التسجيل والقرعات القادمة');
+  await refreshKeepingPosition(
+    'تم سحب العائلة من التسجيل والقرعات القادمة'
+  );
 }
 
 /* تعديل الروم */
@@ -836,7 +898,7 @@ async function editRoom(id) {
 
   if (error) return notify(error.message);
 
-  await fetchAll();
+  await refreshKeepingPosition('تم تعديل الروم');
 }
 
 /* حذف الروم */
@@ -866,8 +928,9 @@ async function deleteRoom(id) {
     return notify('تعذر حذف الروم: ' + error.message);
   }
 
-  await fetchAll();
-  notify('تم حذف الروم ومواجهاته وتوزيعه');
+  await refreshKeepingPosition(
+    'تم حذف الروم ومواجهاته وتوزيعه'
+  );
 }
 
 /* تعديل طرفَي المواجهة */
@@ -882,13 +945,19 @@ async function zoneSaveTeams(matchId, firstId, secondId) {
   const match = roomMatches.find(m => m.id === matchId);
   if (!match) return notify('المواجهة غير موجودة');
 
+  if (manualQualifications.some(q =>
+    q.family_id === firstId || q.family_id === secondId
+  )) {
+    return notify(
+      'إحدى العائلتين متأهلة يدويًا ولا يمكن إضافتها للمواجهة'
+    );
+  }
+
   if (!confirm(
     'حفظ طرفَي المواجهة؟\n' +
     familyName(firstId) + '\nضد\n' +
     familyName(secondId)
   )) return;
-
-  const scroll = window.scrollY;
 
   const { error } = await db.rpc(
     'zone_admin_edit_match',
@@ -903,16 +972,9 @@ async function zoneSaveTeams(matchId, firstId, secondId) {
     return notify('تعذر تعديل المواجهة: ' + error.message);
   }
 
-  await fetchAll();
-  notify('تم حفظ العائلتين وتحديث المواجهة');
-
-  requestAnimationFrame(() => {
-    window.scrollTo({
-      top: scroll,
-      left: 0,
-      behavior: 'auto'
-    });
-  });
+  await refreshKeepingPosition(
+    'تم حفظ العائلتين وتحديث المواجهة'
+  );
 }
 
 /* حفظ حالة القوائم المفتوحة */
@@ -941,6 +1003,204 @@ function detailsHTML(key, title, body, state) {
   );
 }
 
+/* إدارة التأهل اليدوي */
+
+async function zoneManageSeat(familyId, path, action) {
+  if (!admin || !db) {
+    return notify('ليس لديك صلاحية الإدارة');
+  }
+
+  if (!familyId || !['main', 'second'].includes(path)) {
+    return notify('اختر العائلة ومسار التأهل');
+  }
+
+  if (!['add', 'remove'].includes(action)) {
+    return notify('عملية غير صحيحة');
+  }
+
+  if (action === 'add' && isQualified(familyId)) {
+    return notify('العائلة متأهلة بالفعل');
+  }
+
+  const family = families.find(f => f.id === familyId);
+  const name = family?.family ||
+    manualQualifications.find(q =>
+      q.family_id === familyId
+    )?.family || 'العائلة';
+
+  if (!confirm(
+    action === 'add'
+      ? 'إضافة عائلة «' + name + '» إلى مقاعد التأهل؟'
+      : 'إزالة المقعد اليدوي لعائلة «' + name + '»؟'
+  )) return;
+
+  const { error } = await db.rpc(
+    'zone_manage_manual_qualification',
+    {
+      p_family_id: familyId,
+      p_path: path,
+      p_action: action
+    }
+  );
+
+  if (error) {
+    return notify('تعذرت العملية: ' + error.message);
+  }
+
+  await refreshKeepingPosition(
+    action === 'add'
+      ? 'تمت إضافة مقعد التأهل'
+      : 'تمت إزالة مقعد التأهل اليدوي'
+  );
+}
+
+function renderManualSeats() {
+  const container = $('manualSeatsAdmin');
+  if (!container || !admin) return;
+
+  const options = activeFamilies()
+    .filter(f => !isQualified(f.id))
+    .map(f =>
+      '<option value="' + esc(f.id) + '">' +
+      esc(f.family) +
+      '</option>'
+    ).join('');
+
+  const rows = manualQualifications.map(q => {
+    const pathName = q.qualification_path === 'main'
+      ? 'المنطقة المحظورة'
+      : 'محاولة الدخول إلى المنطقة المحظورة';
+
+    return (
+      '<div class="team">' +
+      '<div><b>' + esc(q.family) + '</b>' +
+      '<br><small>' + esc(pathName) +
+      '</small></div>' +
+      '<button class="danger" onclick="' +
+      'zoneManageSeat(' +
+      "'" + q.family_id + "'," +
+      "'" + q.qualification_path + "'," +
+      "'remove')" +
+      '">إزالة المقعد</button>' +
+      '</div>'
+    );
+  }).join('');
+
+  container.innerHTML =
+    '<p class="muted">' +
+    'يمكن إضافة عائلة لأي مسار وإزالة المقاعد المضافة يدويًا.' +
+    ' مقاعد نتائج الرومات لا تُحذف من هذا القسم.' +
+    '</p>' +
+    '<label>العائلة</label>' +
+    '<select id="manualFamily">' +
+    '<option value="">اختر العائلة</option>' +
+    options +
+    '</select>' +
+    '<label>مسار التأهل</label>' +
+    '<select id="manualPath">' +
+    '<option value="main">المنطقة المحظورة</option>' +
+    '<option value="second">' +
+    'محاولة الدخول إلى المنطقة المحظورة' +
+    '</option>' +
+    '</select>' +
+    '<button onclick="' +
+    "zoneManageSeat($('manualFamily').value," +
+    "$('manualPath').value,'add')" +
+    '">إضافة مقعد تأهل</button>' +
+    '<h3>المقاعد المضافة يدويًا</h3>' +
+    (rows ||
+      '<p class="muted">لا توجد مقاعد يدوية</p>');
+}
+
+/* العوائل التي لم تُوزّع خلال 14 يومًا */
+
+function renderInactiveFamilies() {
+  const container = $('inactiveFamiliesAdmin');
+  if (!container || !admin) return;
+
+  const today = new Date();
+  const cutoff = new Date(today);
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - 14);
+
+  const rows = activeFamilies().map(f => {
+    const used = assignments.filter(a =>
+      a.family_id === f.id
+    );
+
+    const dates = used
+      .map(a => events.find(e => e.id === a.event_id))
+      .filter(Boolean)
+      .map(e => e.event_date)
+      .filter(Boolean)
+      .filter(date =>
+        new Date(date + 'T00:00:00') <= today
+      )
+      .sort()
+      .reverse();
+
+    const lastDate = dates[0] || null;
+
+    const last = lastDate
+      ? new Date(lastDate + 'T00:00:00')
+      : null;
+
+    const limit = familyLimit(f);
+
+    return {
+      family: f,
+      lastDate,
+      last,
+      used: used.length,
+      limit,
+      remaining: Math.max(0, limit - used.length),
+      qualified: isQualified(f.id)
+    };
+  }).filter(row =>
+    !row.last || row.last < cutoff
+  ).sort((a, b) => {
+    if (!a.last && b.last) return -1;
+    if (a.last && !b.last) return 1;
+    return a.last - b.last;
+  });
+
+  container.innerHTML =
+    '<p class="muted">' +
+    'العوائل التي لم تُوزّع على روم خلال آخر 14 يومًا، ' +
+    'بما فيها العوائل التي لم تُوزّع سابقًا.' +
+    '</p>' +
+    '<p class="tag">عدد العوائل: ' +
+    rows.length + '</p>' +
+    (
+      rows.map(row =>
+        '<div class="team">' +
+        '<div><b>' +
+        esc(row.family.family) +
+        '</b>' +
+        '<br><small>آخر توزيع: ' +
+        (
+          row.lastDate
+            ? esc(dateStr(row.lastDate))
+            : 'لم تُوزّع سابقًا'
+        ) +
+        '</small>' +
+        '<br><small>المشاركات المسجلة: ' +
+        row.used + '/' + row.limit +
+        '</small>' +
+        '<br><small>الفرص المتبقية: ' +
+        row.remaining +
+        '</small>' +
+        (
+          row.qualified
+            ? '<br><small>متأهلة بالفعل</small>'
+            : ''
+        ) +
+        '</div></div>'
+      ).join('') ||
+      '<p class="muted">لا توجد عوائل ضمن هذه القائمة</p>'
+    );
+}
+
 /* عرض الموقع */
 
 function render() {
@@ -957,8 +1217,26 @@ function render() {
   const first = scoreboard.filter(r => r.first_family);
   const second = scoreboard.filter(r => r.second_family);
 
-  const firstCount = admin ? results.length : first.length;
-  const secondCount = admin ? results.length : second.length;
+  const manualMain = manualQualifications.filter(
+    q => q.qualification_path === 'main'
+  );
+
+  const manualSecond = manualQualifications.filter(
+    q => q.qualification_path === 'second'
+  );
+
+  const mainNames = [
+    ...first.map(r => r.first_family),
+    ...manualMain.map(q => q.family)
+  ];
+
+  const secondNames = [
+    ...second.map(r => r.second_family),
+    ...manualSecond.map(q => q.family)
+  ];
+
+  const firstCount = mainNames.length;
+  const secondCount = secondNames.length;
 
   $('qualified').textContent = firstCount + secondCount;
   $('mainCount').textContent = firstCount + '/32 مقعد';
@@ -971,19 +1249,19 @@ function render() {
     Math.max(0, 32 - secondCount);
 
   $('mainSeats').innerHTML =
-    first.map((r, i) =>
+    mainNames.map((name, i) =>
       '<div class="team">' +
       (i + 1) + '. ' +
-      esc(r.first_family) +
+      esc(name) +
       '</div>'
     ).join('') ||
     '<p class="muted">لم تُنشر نتائج بعد</p>';
 
   $('secondSeats').innerHTML =
-    second.map((r, i) =>
+    secondNames.map((name, i) =>
       '<div class="team">' +
       (i + 1) + '. ' +
-      esc(r.second_family) +
+      esc(name) +
       '</div>'
     ).join('') ||
     '<p class="muted">لم تُنشر نتائج بعد</p>';
@@ -1201,6 +1479,8 @@ function render() {
 
   renderMatchFamilyEditor(state);
   renderAdminMatches(state);
+  renderManualSeats();
+  renderInactiveFamilies();
 }
 
 /* تعديل مواجهات دور الثمانية */
@@ -1217,11 +1497,17 @@ function renderMatchFamilyEditor(state) {
         ) ||
         results.some(r => r.event_id === room.id);
 
-      const optionList = activeFamilies().map(f =>
-        '<option value="' + f.id + '">' +
-        esc(f.family) +
-        '</option>'
-      ).join('');
+      const optionList = activeFamilies()
+        .filter(f =>
+          !manualQualifications.some(q =>
+            q.family_id === f.id
+          )
+        )
+        .map(f =>
+          '<option value="' + f.id + '">' +
+          esc(f.family) +
+          '</option>'
+        ).join('');
 
       const select = (id, slot, selected) =>
         '<select id="' + slot + '_' + id + '" ' +
@@ -1298,7 +1584,7 @@ function renderMatchFamilyEditor(state) {
   }
 }
 
-/* نتائج المواجهات مع زر التعديل */
+/* نتائج المواجهات */
 
 function renderAdminMatches(state) {
   const titles = {
