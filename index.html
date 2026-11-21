@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -663,7 +664,7 @@ footer{
     <div class="stat">
       <strong id="mainRemaining">32</strong>
       <small>
-        المقاعد المتبقية<br>
+        المقاعد المتبقية
         المنطقة المحظورة
       </small>
     </div>
@@ -671,7 +672,7 @@ footer{
     <div class="stat">
       <strong id="secondRemaining">32</strong>
       <small>
-        المقاعد المتبقية<br>
+        المقاعد المتبقية
         محاولة الدخول
       </small>
     </div>
@@ -915,9 +916,7 @@ footer{
 <section id="admin" class="section">
 
   <div class="admin-head">
-
     <h1>لوحة الإدارة</h1>
-
   </div>
 
   <!-- تسجيل دخول الإدارة -->
@@ -1111,6 +1110,53 @@ footer{
 
     </details>
 
+    <!-- إدارة مقاعد التأهل اليدوية -->
+
+    <details
+      class="zone-accordion"
+      id="qualificationsAccordion">
+
+      <summary>
+        إدارة مقاعد التأهل
+      </summary>
+
+      <div class="zone-accordion-body">
+
+        <p class="muted">
+          إضافة العوائل إلى المنطقة المحظورة أو
+          محاولة الدخول إلى المنطقة المحظورة،
+          وإزالة المقاعد المضافة يدويًا.
+        </p>
+
+        <div id="manualSeatsAdmin"></div>
+
+      </div>
+
+    </details>
+
+    <!-- العوائل غير المشاركة منذ 14 يومًا -->
+
+    <details
+      class="zone-accordion"
+      id="inactiveAccordion">
+
+      <summary>
+        العوائل التي لم تشارك منذ 14 يومًا
+      </summary>
+
+      <div class="zone-accordion-body">
+
+        <p class="muted">
+          عرض العوائل التي لم تُوزّع على روم
+          خلال آخر 14 يومًا مع عدد الفرص المتبقية.
+        </p>
+
+        <div id="inactiveFamiliesAdmin"></div>
+
+      </div>
+
+    </details>
+
     <!-- النتائج -->
 
     <details
@@ -1217,7 +1263,7 @@ function showPage(id){
 
 <script src="config.js"></script>
 
-<script src="app.js?v=13"></script>
+<script src="app.js?v=14"></script>
 
 </body>
 </html>
