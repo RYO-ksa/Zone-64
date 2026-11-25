@@ -1860,3 +1860,86 @@ function displayPublicMatches() {
 /* تشغيل الموقع */
 
 fetchAll();
+/* قائمة العوائل غير المتأهلة */
+
+function renderUnqualifiedFamilies() {
+  if (!admin) return;
+
+  const adminTools = $('adminTools');
+  if (!adminTools) return;
+
+  let section = $('unqualifiedFamiliesAdmin');
+
+  if (!section) {
+    section = document.createElement('details');
+    section.id = 'unqualifiedFamiliesAdmin';
+    section.className = 'zone-accordion';
+    adminTools.appendChild(section);
+  }
+
+  const pending = activeFamilies()
+    .filter(f => !isQualified(f.id))
+    .sort((a, b) =>
+      a.family.localeCompare(b.family, 'ar')
+    );
+
+  section.innerHTML =
+    '<summary>العوائل غير المتأهلة (' +
+    pending.length +
+    ')</summary>' +
+    '<div class="zone-accordion-body">' +
+    '<p class="tag">إجمالي العوائل غير المتأهلة: ' +
+    pending.length +
+    '</p>' +
+    (
+      pending.map((f, i) => {
+        const used = assignments.filter(a =>
+          a.family_id === f.id
+        );
+
+        const dates = used
+          .map(a => events.find(e =>
+            e.id === a.event_id
+          )?.event_date)
+          .filter(Boolean)
+          .sort()
+          .reverse();
+
+        return (
+          '<div class="team">' +
+          '<div><b>' +
+          (i + 1) + '. ' +
+          esc(f.family) +
+          '</b>' +
+          '<br><small>آيدي العائلة: ' +
+          esc(f.family_id) +
+          '</small>' +
+          '<br><small>المنسق: ' +
+          esc(f.coordinator) +
+          '</small>' +
+          '<br><small>آيدي المنسق: ' +
+          esc(f.coordinator_id) +
+          '</small>' +
+          '<br><small>عدد المشاركات: ' +
+          used.length +
+          '</small>' +
+          '<br><small>آخر مشاركة: ' +
+          (dates.length
+            ? esc(dates[0])
+            : 'لم تشارك سابقًا') +
+          '</small>' +
+          '<br><small>فرص المشاركة: مفتوحة</small>' +
+          '</div></div>'
+        );
+      }).join('') ||
+      '<p class="muted">لا توجد عوائل غير متأهلة</p>'
+    ) +
+    '</div>';
+}
+
+const originalRender = render;
+
+render = function () {
+  originalRender();
+  renderUnqualifiedFamilies();
+};
