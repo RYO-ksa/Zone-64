@@ -46,12 +46,6 @@ const familyName = id =>
     : families.find(f => f.id === id)?.family ||
       'عائلة غير معروفة';
 
-const familyLimit = f =>
-  Number.isSafeInteger(Number(f?.max_participations)) &&
-  Number(f?.max_participations) >= 0
-    ? Number(f.max_participations)
-    : 10;
-
 const eventAssignments = id =>
   assignments.filter(a => a.event_id === id);
 
@@ -344,7 +338,7 @@ $('eventForm').addEventListener('submit', async event => {
   await refreshKeepingPosition('تم إنشاء الروم بنجاح');
 });
 
-/* توزيع عائلة */
+/* توزيع عائلة دون حد للمشاركات */
 
 async function assign(familyId, eventId) {
   if (!admin || !eventId) return;
@@ -367,10 +361,6 @@ async function assign(familyId, eventId) {
   const used = assignments.filter(a =>
     a.family_id === familyId
   );
-
-  if (used.length >= familyLimit(family)) {
-    return notify('العائلة استنفدت فرص مشاركتها');
-  }
 
   if (isQualified(familyId)) {
     return notify('العائلة متأهلة بالفعل');
@@ -396,10 +386,10 @@ async function assign(familyId, eventId) {
   await refreshKeepingPosition('تم توزيع العائلة');
 }
 
-/* القرعة */
+/* القرعة العشوائية */
 
 async function randomDraw(eventId) {
-  if (!admin) return;
+  if (!admin || !db) return;
 
   const room = events.find(e => e.id === eventId);
 
@@ -409,20 +399,15 @@ async function randomDraw(eventId) {
 
   if (
     eventAssignments(eventId).length ||
-    eventMatches(eventId).length
+    eventMatches(eventId).length ||
+    results.some(r => r.event_id === eventId)
   ) {
-    return notify('الروم يحتوي على توزيع أو مواجهات مسبقة');
-  }
-
-  if (manualQualifications.length) {
-    return notify(
-      'القرعة متوقفة مؤقتًا لوجود مقاعد تأهل يدوية. ' +
-      'يجب التأكد من أن دالة القرعة تستبعد المتأهلين يدويًا.'
-    );
+    return notify('الروم يحتوي على توزيع أو مواجهات أو نتائج مسبقة');
   }
 
   if (!confirm(
-    'إجراء قرعة عشوائية لاختيار 8 عوائل وإنشاء المواجهات؟'
+    'إجراء قرعة عشوائية لاختيار 8 عوائل وإنشاء المواجهات؟\n' +
+    'فرص المشاركة مفتوحة، ويتم استبعاد المتأهلين والمنسحبين.'
   )) return;
 
   const { data, error } = await db.rpc(
@@ -797,46 +782,11 @@ async function editFamily(id) {
   await refreshKeepingPosition('تم تعديل بيانات العائلة');
 }
 
-/* تعديل فرص العائلة */
+/* فرص المشاركة مفتوحة */
 
-async function zoneSetLimit(id) {
+function zoneSetLimit() {
   if (!admin) return;
-
-  const f = families.find(f => f.id === id);
-  if (!f) return notify('العائلة غير موجودة');
-
-  const raw = prompt(
-    'كم عدد فرص المشاركة لعائلة ' + f.family + '؟',
-    String(familyLimit(f))
-  );
-
-  if (raw === null) return;
-
-  const value = Number(raw.trim());
-
-  if (
-    !raw.trim() ||
-    !Number.isSafeInteger(value) ||
-    value < 0
-  ) {
-    return notify('اكتب عددًا صحيحًا من صفر فأعلى');
-  }
-
-  const { error } = await db.rpc(
-    'zone_admin_set_family_limit',
-    {
-      p_family_id: id,
-      p_limit: value
-    }
-  );
-
-  if (error) {
-    return notify('تعذر تغيير الفرص: ' + error.message);
-  }
-
-  await refreshKeepingPosition(
-    'تم تحديد ' + value + ' فرصة لعائلة ' + f.family
-  );
+  notify('فرص المشاركة مفتوحة لجميع العوائل غير المتأهلة');
 }
 
 /* سحب العائلة */
@@ -945,11 +895,9 @@ async function zoneSaveTeams(matchId, firstId, secondId) {
   const match = roomMatches.find(m => m.id === matchId);
   if (!match) return notify('المواجهة غير موجودة');
 
-  if (manualQualifications.some(q =>
-    q.family_id === firstId || q.family_id === secondId
-  )) {
+  if (isQualified(firstId) || isQualified(secondId)) {
     return notify(
-      'إحدى العائلتين متأهلة يدويًا ولا يمكن إضافتها للمواجهة'
+      'إحدى العائلتين متأهلة بالفعل ولا يمكن إضافتها للمواجهة'
     );
   }
 
@@ -1145,15 +1093,11 @@ function renderInactiveFamilies() {
       ? new Date(lastDate + 'T00:00:00')
       : null;
 
-    const limit = familyLimit(f);
-
     return {
       family: f,
       lastDate,
       last,
       used: used.length,
-      limit,
-      remaining: Math.max(0, limit - used.length),
       qualified: isQualified(f.id)
     };
   }).filter(row =>
@@ -1185,16 +1129,11 @@ function renderInactiveFamilies() {
         ) +
         '</small>' +
         '<br><small>المشاركات المسجلة: ' +
-        row.used + '/' + row.limit +
+        row.used +
         '</small>' +
-        '<br><small>الفرص المتبقية: ' +
-        row.remaining +
+        '<br><small>فرص المشاركة: ' +
+        (row.qualified ? 'متأهلة بالفعل' : 'غير محدودة') +
         '</small>' +
-        (
-          row.qualified
-            ? '<br><small>متأهلة بالفعل</small>'
-            : ''
-        ) +
         '</div></div>'
       ).join('') ||
       '<p class="muted">لا توجد عوائل ضمن هذه القائمة</p>'
@@ -1348,13 +1287,15 @@ function render() {
         a.family_id === f.id
       );
 
-      const limit = familyLimit(f);
       const qualified = isQualified(f.id);
 
       const options = events
         .filter(room =>
           !room.published &&
-          !eventMatches(room.id).length
+          !eventMatches(room.id).length &&
+          !results.some(r => r.event_id === room.id) &&
+          eventAssignments(room.id).length < 8 &&
+          !used.some(a => a.event_id === room.id)
         )
         .map(room =>
           '<option value="' + room.id + '">' +
@@ -1375,8 +1316,8 @@ function render() {
         esc(f.coordinator_id) +
         '</small>' +
         '<br><small>المشاركات: ' +
-        used.length + '/' + limit +
-        (qualified ? ' • متأهلة' : '') +
+        used.length +
+        (qualified ? ' • متأهلة' : ' • فرص مفتوحة') +
         '</small>' +
         '<br><small>' +
         (
@@ -1394,7 +1335,7 @@ function render() {
         options +
         '</select>' +
         '<button ' +
-        (qualified || used.length >= limit
+        (qualified || !options
           ? 'disabled'
           : '') +
         ' onclick="assign(\'' + f.id +
@@ -1402,9 +1343,6 @@ function render() {
         '\').value)">توزيع</button>' +
         '<button class="secondary" onclick="editFamily(\'' +
         f.id + '\')">تعديل البيانات</button>' +
-        '<button class="secondary" onclick="zoneSetLimit(\'' +
-        f.id + '\')">تعديل الفرص (' +
-        limit + ')</button>' +
         '<button class="danger" onclick="deleteFamily(\'' +
         f.id + '\')">سحب العائلة نهائيًا</button>' +
         used.filter(a => {
@@ -1412,7 +1350,8 @@ function render() {
 
           return (
             !room?.published &&
-            !eventMatches(a.event_id).length
+            !eventMatches(a.event_id).length &&
+            !results.some(r => r.event_id === a.event_id)
           );
         }).map(a =>
           '<button class="secondary" onclick="unassign(\'' +
@@ -1440,7 +1379,8 @@ function render() {
         '<div class="team-actions">' +
         '<button class="secondary" ' +
         (
-          room.published || count || matches.length
+          room.published || count || matches.length ||
+          results.some(r => r.event_id === room.id)
             ? 'disabled'
             : ''
         ) +
@@ -1497,17 +1437,14 @@ function renderMatchFamilyEditor(state) {
         ) ||
         results.some(r => r.event_id === room.id);
 
-      const optionList = activeFamilies()
-        .filter(f =>
-          !manualQualifications.some(q =>
-            q.family_id === f.id
-          )
-        )
-        .map(f =>
-          '<option value="' + f.id + '">' +
-          esc(f.family) +
-          '</option>'
-        ).join('');
+      const eligible = activeFamilies()
+        .filter(f => !isQualified(f.id));
+
+      const optionList = eligible.map(f =>
+        '<option value="' + f.id + '">' +
+        esc(f.family) +
+        '</option>'
+      ).join('');
 
       const select = (id, slot, selected) =>
         '<select id="' + slot + '_' + id + '" ' +
@@ -1516,7 +1453,7 @@ function renderMatchFamilyEditor(state) {
         optionList +
         (
           selected &&
-          !activeFamilies().some(f => f.id === selected)
+          !eligible.some(f => f.id === selected)
             ? '<option value="' + selected + '">' +
               esc(familyName(selected)) +
               '</option>'
