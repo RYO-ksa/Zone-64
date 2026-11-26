@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -23,7 +22,6 @@
 }
 
 *{box-sizing:border-box}
-
 html{scroll-behavior:smooth}
 
 body{
@@ -64,8 +62,6 @@ button.danger{
   box-shadow:none;
 }
 
-/* أعلى الموقع */
-
 .topbar{
   height:75px;
   display:flex;
@@ -76,9 +72,7 @@ button.danger{
   border-bottom:1px solid #3c232a;
 }
 
-.brand{
-  text-align:center;
-}
+.brand{text-align:center}
 
 .brand strong{
   display:block;
@@ -93,8 +87,6 @@ button.danger{
   margin-top:6px;
   font-size:10px;
 }
-
-/* المحتوى */
 
 main{
   max-width:1050px;
@@ -130,8 +122,6 @@ h3{font-size:15px}
 .muted,small{color:var(--muted)}
 .tag{color:#ff5962;font-weight:bold}
 
-/* التنبيهات */
-
 .notice{
   background:#26151b;
   border:1px solid #63303a;
@@ -141,8 +131,6 @@ h3{font-size:15px}
   margin:12px 0;
   font-size:13px;
 }
-
-/* الرئيسية */
 
 .hero{
   position:relative;
@@ -157,7 +145,7 @@ h3{font-size:15px}
   border:1px solid #552832;
   border-radius:20px;
   background:
-    radial-gradient(circle at 50% 28%,rgba(232,31,46,.17),transparent 40%),
+    radial-gradient(circle at 50% 28%,rgba(232,31,46,.17),transparent 45%),
     linear-gradient(160deg,#1a1116,#09090c 70%);
   box-shadow:0 18px 55px #0009;
 }
@@ -199,8 +187,6 @@ h3{font-size:15px}
 
 .hero button{min-width:165px}
 
-/* الإحصائيات */
-
 .stats{
   display:grid;
   grid-template-columns:repeat(3,1fr);
@@ -234,8 +220,6 @@ h3{font-size:15px}
   display:block;
 }
 
-/* اختصارات الرئيسية */
-
 .home-links{
   display:grid;
   grid-template-columns:repeat(3,1fr);
@@ -252,8 +236,6 @@ h3{font-size:15px}
   font-size:11px;
 }
 
-/* البانل */
-
 .panel{
   background:linear-gradient(145deg,rgba(29,19,24,.97),rgba(13,11,14,.98));
   border:1px solid #4d2932;
@@ -268,8 +250,6 @@ h3{font-size:15px}
   grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
   gap:12px;
 }
-
-/* النماذج */
 
 .field{margin:11px 0}
 
@@ -297,8 +277,6 @@ input:focus,select:focus{
   border-color:#d33a47;
   box-shadow:0 0 0 2px rgba(211,58,71,.13);
 }
-
-/* العوائل */
 
 .team{
   background:#20151a;
@@ -336,8 +314,6 @@ input:focus,select:focus{
   font-size:13px;
   padding:9px;
 }
-
-/* الإدارة */
 
 #adminLogin{
   max-width:430px;
@@ -389,8 +365,6 @@ input:focus,select:focus{
   background:#21151b;
 }
 
-/* نتائج الإدارة */
-
 .rounds{
   display:flex;
   gap:8px;
@@ -418,8 +392,6 @@ input:focus,select:focus{
 }
 
 .match div:last-child{border:0}
-
-/* المنظمون */
 
 .organizers-grid{
   display:grid;
@@ -469,8 +441,6 @@ input:focus,select:focus{
   direction:ltr;
   margin-top:5px;
 }
-
-/* الشريط السفلي */
 
 .bottom-nav{
   position:fixed;
@@ -527,8 +497,6 @@ input:focus,select:focus{
   justify-content:center;
   font-size:18px;
 }
-
-/* الفوتر */
 
 footer{
   text-align:center;
@@ -681,20 +649,17 @@ footer{
 
   <div class="home-links">
 
-    <button
-      class="home-link"
+    <button class="home-link"
       onclick="showPage('register')">
       تسجيل العوائل
     </button>
 
-    <button
-      class="home-link"
+    <button class="home-link"
       onclick="showPage('families')">
       العوائل المسجلة
     </button>
 
-    <button
-      class="home-link"
+    <button class="home-link"
       onclick="showPage('events')">
       الفعاليات
     </button>
@@ -757,9 +722,7 @@ footer{
         </label>
       </div>
 
-      <button
-        id="registerButton"
-        type="submit">
+      <button id="registerButton" type="submit">
         إرسال طلب التسجيل
       </button>
 
@@ -919,8 +882,6 @@ footer{
     <h1>لوحة الإدارة</h1>
   </div>
 
-  <!-- تسجيل دخول الإدارة -->
-
   <div id="adminLogin" class="panel">
 
     <h2>دخول المنظم</h2>
@@ -974,13 +935,77 @@ footer{
           <small>أدوات التحكم بالفعالية</small>
         </div>
 
-        <button
-          class="secondary"
+        <button class="secondary"
           onclick="logout()">
           تسجيل الخروج
         </button>
 
       </div>
+
+    </div>
+
+    <!-- حذف العوائل المتأهلة -->
+
+    <div class="panel" id="deleteSeatsPanel">
+
+      <h2>حذف العوائل المتأهلة</h2>
+
+      <p class="muted">
+        اختر العائلة التي ترغب في إلغاء تأهلها
+        وتحرير مقعدها في البطولة.
+      </p>
+
+      <label>
+        مسار التأهل
+
+        <select id="deleteSeatPath"
+          onchange="showDeleteSeats()">
+
+          <option value="main">
+            المنطقة المحظورة
+          </option>
+
+          <option value="second">
+            محاولة الدخول إلى المنطقة المحظورة
+          </option>
+
+        </select>
+
+      </label>
+
+      <label>
+        العائلة المتأهلة
+
+        <select id="deleteSeatSelect">
+
+          <option value="">
+            اختر العائلة
+          </option>
+
+        </select>
+
+      </label>
+
+      <button
+        type="button"
+        class="secondary"
+        onclick="showDeleteSeats()">
+        تحديث قائمة المتأهلين
+      </button>
+
+      <button
+        id="deleteSeatButton"
+        type="button"
+        class="danger"
+        onclick="deleteSelectedSeat()"
+        style="width:100%;margin-top:10px">
+        حذف التأهل
+      </button>
+
+      <p id="deleteSeatFeedback"
+        class="muted"
+        aria-live="polite">
+      </p>
 
     </div>
 
@@ -1044,8 +1069,7 @@ footer{
 
     <!-- العوائل -->
 
-    <details
-      class="zone-accordion"
+    <details class="zone-accordion"
       id="familiesAccordion">
 
       <summary>
@@ -1054,8 +1078,7 @@ footer{
 
       <div class="zone-accordion-body">
 
-        <button
-          class="secondary"
+        <button class="secondary"
           onclick="addFamily()">
           إضافة عائلة يدويًا
         </button>
@@ -1068,8 +1091,7 @@ footer{
 
     <!-- الرومات -->
 
-    <details
-      class="zone-accordion"
+    <details class="zone-accordion"
       id="roomsAccordion">
 
       <summary>
@@ -1090,8 +1112,7 @@ footer{
 
     <!-- تعديل المواجهات -->
 
-    <details
-      class="zone-accordion"
+    <details class="zone-accordion"
       id="editorAccordion">
 
       <summary>
@@ -1110,10 +1131,9 @@ footer{
 
     </details>
 
-    <!-- إدارة مقاعد التأهل اليدوية -->
+    <!-- إدارة مقاعد التأهل -->
 
-    <details
-      class="zone-accordion"
+    <details class="zone-accordion"
       id="qualificationsAccordion">
 
       <summary>
@@ -1124,8 +1144,7 @@ footer{
 
         <p class="muted">
           إضافة العوائل إلى المنطقة المحظورة أو
-          محاولة الدخول إلى المنطقة المحظورة،
-          وإزالة المقاعد المضافة يدويًا.
+          محاولة الدخول إلى المنطقة المحظورة.
         </p>
 
         <div id="manualSeatsAdmin"></div>
@@ -1134,10 +1153,24 @@ footer{
 
     </details>
 
-    <!-- العوائل غير المشاركة منذ 14 يومًا -->
+    <!-- العوائل غير المتأهلة -->
 
-    <details
-      class="zone-accordion"
+    <details class="zone-accordion"
+      id="unqualifiedFamiliesAdmin">
+
+      <summary>
+        العوائل غير المتأهلة
+      </summary>
+
+      <div class="zone-accordion-body">
+        جارٍ تحميل العوائل غير المتأهلة...
+      </div>
+
+    </details>
+
+    <!-- العوائل غير المشاركة -->
+
+    <details class="zone-accordion"
       id="inactiveAccordion">
 
       <summary>
@@ -1159,8 +1192,7 @@ footer{
 
     <!-- النتائج -->
 
-    <details
-      class="zone-accordion"
+    <details class="zone-accordion"
       id="resultsAccordion">
 
       <summary>
@@ -1185,8 +1217,7 @@ footer{
 
 <nav class="bottom-nav">
 
-  <button
-    class="nav-item active-nav"
+  <button class="nav-item active-nav"
     data-page="home"
     onclick="showPage('home')">
 
@@ -1195,8 +1226,7 @@ footer{
 
   </button>
 
-  <button
-    class="nav-item"
+  <button class="nav-item"
     data-page="matches"
     onclick="showPage('matches')">
 
@@ -1205,8 +1235,7 @@ footer{
 
   </button>
 
-  <button
-    class="nav-item"
+  <button class="nav-item"
     data-page="organizers"
     onclick="showPage('organizers')">
 
@@ -1215,8 +1244,7 @@ footer{
 
   </button>
 
-  <button
-    class="nav-item"
+  <button class="nav-item"
     data-page="qualify"
     onclick="showPage('qualify')">
 
@@ -1225,8 +1253,7 @@ footer{
 
   </button>
 
-  <button
-    class="nav-item"
+  <button class="nav-item"
     data-page="admin"
     onclick="showPage('admin')">
 
@@ -1256,6 +1283,11 @@ function showPage(id){
       );
 
     });
+
+  if(id === 'admin' &&
+     typeof showDeleteSeats === 'function'){
+    showDeleteSeats();
+  }
 }
 </script>
 
@@ -1263,7 +1295,284 @@ function showPage(id){
 
 <script src="config.js"></script>
 
-<script src="app.js?v=14"></script>
+<script src="app.js?v=27"></script>
+
+<!-- صلاحية حذف التأهل -->
+
+<script>
+
+async function showDeleteSeats(){
+
+  const select =
+    document.getElementById('deleteSeatSelect');
+
+  const pathSelect =
+    document.getElementById('deleteSeatPath');
+
+  const feedback =
+    document.getElementById('deleteSeatFeedback');
+
+  const button =
+    document.getElementById('deleteSeatButton');
+
+  if(!select || !pathSelect || !feedback || !button){
+    return;
+  }
+
+  if(typeof admin === 'undefined' || !admin){
+    select.replaceChildren(
+      new Option('اختر العائلة','')
+    );
+    button.disabled = true;
+    return;
+  }
+
+  const path = pathSelect.value;
+
+  const column = path === 'main'
+    ? 'first_family_id'
+    : 'second_family_id';
+
+  select.replaceChildren(
+    new Option('جارٍ تحميل العوائل...','')
+  );
+
+  button.disabled = true;
+
+  feedback.textContent = '';
+
+  try{
+
+    const [
+      resultResponse,
+      manualResponse,
+      familyResponse
+    ] = await Promise.all([
+
+      db.from('results').select(column),
+
+      db.from('manual_qualifications')
+        .select('family_id,qualification_path')
+        .eq('qualification_path',path),
+
+      db.from('families')
+        .select('id,family')
+
+    ]);
+
+    if(resultResponse.error){
+      throw resultResponse.error;
+    }
+
+    if(manualResponse.error){
+      throw manualResponse.error;
+    }
+
+    if(familyResponse.error){
+      throw familyResponse.error;
+    }
+
+    if(pathSelect.value !== path || !admin){
+      return;
+    }
+
+    const names = new Map(
+      (familyResponse.data || []).map(f => [
+        f.id,
+        f.family
+      ])
+    );
+
+    const ids = new Set();
+
+    (resultResponse.data || []).forEach(r => {
+      if(r[column]){
+        ids.add(r[column]);
+      }
+    });
+
+    (manualResponse.data || []).forEach(q => {
+      if(q.family_id){
+        ids.add(q.family_id);
+      }
+    });
+
+    const qualified = Array.from(ids)
+      .map(id => ({
+        id:id,
+        name:names.get(id) || id
+      }))
+      .sort((a,b) =>
+        a.name.localeCompare(b.name,'ar')
+      );
+
+    select.replaceChildren(
+      new Option('اختر العائلة المتأهلة','')
+    );
+
+    qualified.forEach(f => {
+
+      select.add(
+        new Option(f.name,f.id)
+      );
+
+    });
+
+    feedback.textContent =
+      'عدد العوائل المتأهلة: ' +
+      qualified.length;
+
+    button.disabled = qualified.length === 0;
+
+    if(!qualified.length){
+
+      select.replaceChildren(
+        new Option('لا توجد عوائل متأهلة','')
+      );
+
+    }
+
+  }catch(error){
+
+    select.replaceChildren(
+      new Option('تعذر تحميل العوائل','')
+    );
+
+    feedback.textContent =
+      error.message || 'تعذر تحميل البيانات';
+
+    button.disabled = true;
+
+  }
+
+}
+
+async function deleteSelectedSeat(){
+
+  if(typeof admin === 'undefined' || !admin){
+    alert('ليس لديك صلاحية الإدارة');
+    return;
+  }
+
+  const select =
+    document.getElementById('deleteSeatSelect');
+
+  const pathSelect =
+    document.getElementById('deleteSeatPath');
+
+  const feedback =
+    document.getElementById('deleteSeatFeedback');
+
+  const button =
+    document.getElementById('deleteSeatButton');
+
+  const id = select.value;
+
+  const path = pathSelect.value;
+
+  if(!id){
+    alert('اختر العائلة أولًا');
+    return;
+  }
+
+  const name =
+    select.options[select.selectedIndex].text;
+
+  const tournament = path === 'main'
+    ? 'المنطقة المحظورة'
+    : 'محاولة الدخول إلى المنطقة المحظورة';
+
+  const confirmed = confirm(
+    'هل أنت متأكد من حذف تأهل عائلة ' +
+    name +
+    ' من بطولة ' +
+    tournament +
+    '؟\n\nسيتم تحرير المقعد وإلغاء التأهل.'
+  );
+
+  if(!confirmed){
+    return;
+  }
+
+  button.disabled = true;
+
+  button.textContent = 'جارٍ حذف التأهل...';
+
+  try{
+
+    const {error} = await db.rpc(
+      'zone_admin_cancel_qualification',
+      {
+        p_family_id:id,
+        p_path:path
+      }
+    );
+
+    if(error){
+      throw error;
+    }
+
+    alert(
+      'تم حذف تأهل عائلة ' +
+      name +
+      ' بنجاح'
+    );
+
+    if(typeof fetchAll === 'function'){
+      await fetchAll();
+    }
+
+    await showDeleteSeats();
+
+  }catch(error){
+
+    feedback.textContent =
+      'تعذر حذف التأهل: ' +
+      error.message;
+
+    alert(feedback.textContent);
+
+    button.disabled = false;
+
+  }finally{
+
+    button.textContent = 'حذف التأهل';
+
+  }
+
+}
+
+/* تحميل القائمة عند تسجيل دخول الإدارة */
+
+(function(){
+
+  const tools =
+    document.getElementById('adminTools');
+
+  if(!tools){
+    return;
+  }
+
+  const observer = new MutationObserver(() => {
+
+    if(!tools.hidden){
+      showDeleteSeats();
+    }
+
+  });
+
+  observer.observe(tools,{
+    attributes:true,
+    attributeFilter:['hidden']
+  });
+
+  if(!tools.hidden){
+    showDeleteSeats();
+  }
+
+})();
+
+</script>
 
 </body>
 </html>
