@@ -2173,69 +2173,7 @@ function displayPublicMatches() {
   };
 
   for (const matches of groups.values()) {
-    const firstMatch = matches[0];const originalRender = render;
-
-render = function () {
-  originalRender();
-
-  if (!admin) return;
-
-  const paths = [
-    {
-      element: 'mainSeats',
-      column: 'first_family_id',
-      path: 'main'
-    },
-    {
-      element: 'secondSeats',
-      column: 'second_family_id',
-      path: 'second'
-    }
-  ];
-
-  paths.forEach(({ element, column, path }) => {
-    const container = document.getElementById(element);
-    if (!container) return;
-
-    const qualified = [
-      ...results
-        .filter(r => r[column])
-        .map(r => ({
-          id: r[column],
-          name: familyName(r[column])
-        })),
-      ...manualQualifications
-        .filter(q => q.qualification_path === path)
-        .map(q => ({
-          id: q.family_id,
-          name: q.family
-        }))
-    ];
-
-    container.replaceChildren();
-
-    qualified.forEach((family, index) => {
-      const row = document.createElement('div');
-      row.className = 'team';
-      row.style.cssText =
-        'display:flex;align-items:center;justify-content:space-between;gap:10px';
-
-      const name = document.createElement('b');
-      name.textContent = `${index + 1}. ${family.name}`;
-
-      const button = document.createElement('button');
-      button.textContent = 'حذف التأهل';
-      button.style.cssText =
-        'background:#b91c1c;color:white;border:0;padding:8px 12px;border-radius:6px;cursor:pointer';
-
-      button.onclick = () =>
-        cancelQualification(family.id, path);
-
-      row.append(name, button);
-      container.appendChild(row);
-    });
-  });
-};
+    const firstMatch = matches[0];
 
     const title = document.createElement('h2');
 
